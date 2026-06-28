@@ -1,0 +1,30 @@
+/node_modules
+/.next
+/artifacts
+/cache
+/coverage
+/typechain-types
+/.tmp
+/.npmrc
+tsconfig.tsbuildinfo
+.DS_Store
+.claude
+.agents
+/EverOS
+
+# Environment & secrets - never commit
+.env*
+!.env.example
+
+# Wallet / private keys - never commit
+.new-wallet.json
+*.wallet.json
+*.key
+
+*.log
+
+# Build artifacts / archives
+arcstream-source.zip
+*.zip
+
+.vercel

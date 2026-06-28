@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.*.local
+.vercel
+node_modules
+.next
+.tmp
+.npm-cache
+artifacts
+cache
+coverage
+typechain-types
+*.log

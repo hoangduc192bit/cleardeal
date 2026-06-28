@@ -1,0 +1,36 @@
+{
+  "network": "arcTestnet",
+  "chainId": 5042002,
+  "rpcUrl": "https://rpc.testnet.arc.network",
+  "explorerUrl": "https://testnet.arcscan.app",
+  "deployedAt": "2026-06-23T08:47:01.048Z",
+  "deployer": "0x27Bd802E4A53c345044cC8858fD78E324767A810",
+  "contracts": {
+    "AgentRegistry": {
+      "address": "0x522a52526697A6F99401F7A83007d52A3f35B22c",
+      "transactionHash": "0x378f5c0b562ee46e23a7aa028e318608a05abcbdcb31a3c92fa9721f4ad0be4b",
+      "explorerLink": "https://testnet.arcscan.app/tx/0x378f5c0b562ee46e23a7aa028e318608a05abcbdcb31a3c92fa9721f4ad0be4b",
+      "constructorArgs": []
+    },
+    "StreamPayment": {
+      "address": "0x06161b24F05EB35dD76F7D6F0d0fCb1D91A0810f",
+      "transactionHash": "0x5f558eee1ec27f66be460ec06d89194deb1e5bddedefe870819e096e27a14b97",
+      "explorerLink": "https://testnet.arcscan.app/tx/0x5f558eee1ec27f66be460ec06d89194deb1e5bddedefe870819e096e27a14b97",
+      "constructorArgs": [
+        "0x3600000000000000000000000000000000000000"
+      ]
+    },
+    "AgentBudgetGuard": {
+      "address": "0xCf23273612782CB1c6fDC0AAe988788dD4ad14ff",
+      "transactionHash": "0x46134a2f130db398c20ca7cb0fcc146bd82ca9f2e3faeec1caa3c262a442b0b5",
+      "explorerLink": "https://testnet.arcscan.app/tx/0x46134a2f130db398c20ca7cb0fcc146bd82ca9f2e3faeec1caa3c262a442b0b5",
+      "constructorArgs": [
+        "0x3600000000000000000000000000000000000000"
+      ],
+      "agentWallet": "0x17cb8319a2da388c1681dbf4bb19684cf8929e06",
+      "dailyLimitUsdc": "5",
+      "policySetTx": "0xa8fb7c80fafdea905018544c6059308069510e2851be83c0e9ae21386da070ee"
+    }
+  },
+  "updatedAt": "2026-06-28T07:19:54.258Z"
+}
