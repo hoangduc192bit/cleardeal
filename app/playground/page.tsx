@@ -1,17 +1,14 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
+"use client";
+
+import { ReactNode, useState } from "react";
 import { ResearchAgentDemo } from "@/components/ResearchAgentDemo";
 import { AppNav } from "@/components/AppNav";
 import { PlaygroundWalletPanel } from "@/components/PlaygroundWalletPanel";
-import { Cpu, Zap, ReceiptText } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "Agent Playground - ArcStream",
-  description:
-    "Watch an AI agent discover tools, pay per call via x402, and produce a research report on Arc Testnet.",
-};
+import { Cpu, Zap, ReceiptText, Sliders } from "lucide-react";
 
 export default function PlaygroundPage() {
+  const [activeTab, setActiveTab] = useState<"manage" | "run">("manage");
+
   return (
     <div
       className="relative min-h-screen bg-[#f9fafb] overflow-x-hidden"
@@ -49,7 +46,7 @@ export default function PlaygroundPage() {
 
       <main className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 pt-32 pb-24">
         {/* Page header */}
-        <div className="mb-12">
+        <div className="mb-10">
           <span
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-[#0084FF] text-[12px] font-semibold border border-blue-100 mb-5"
             style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
@@ -73,10 +70,42 @@ export default function PlaygroundPage() {
           </p>
         </div>
 
-        <PlaygroundWalletPanel />
+        {/* Segmented Tab Navigation */}
+        <div className="flex p-1.5 bg-neutral-100/90 border border-neutral-200/50 rounded-2xl max-w-[480px] mb-8 gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+          <button
+            onClick={() => setActiveTab("manage")}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "manage"
+                ? "bg-white text-[#0084FF] shadow-sm border border-neutral-200/20"
+                : "text-neutral-500 hover:text-neutral-800"
+            }`}
+            type="button"
+          >
+            <Sliders className="w-4 h-4" />
+            1. Quản lý & Huấn luyện
+          </button>
+          <button
+            onClick={() => setActiveTab("run")}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "run"
+                ? "bg-white text-[#0084FF] shadow-sm border border-neutral-200/20"
+                : "text-neutral-500 hover:text-neutral-800"
+            }`}
+            type="button"
+          >
+            <Zap className="w-4 h-4" />
+            2. Chạy tác vụ AI
+          </button>
+        </div>
 
-        {/* Main demo */}
-        <ResearchAgentDemo />
+        {/* Conditional Content Rendering */}
+        <div className="transition-all duration-300">
+          {activeTab === "manage" ? (
+            <PlaygroundWalletPanel />
+          ) : (
+            <ResearchAgentDemo />
+          )}
+        </div>
 
         {/* Stats row */}
         <div className="mt-8 grid md:grid-cols-3 gap-4">
