@@ -134,12 +134,7 @@ export function WalletButton() {
               </>
             )}
 
-            {!isWalletConnectConfigured && (
-              <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-[12px] leading-relaxed text-amber-700">
-                WalletConnect QR is not enabled in this build. Set a real
-                NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID before adding mobile QR.
-              </div>
-            )}
+
           </div>
 
           {error && (
