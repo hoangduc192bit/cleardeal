@@ -307,7 +307,7 @@ export function Tools() {
           className="font-display text-4xl sm:text-5xl lg:text-[52px] font-extrabold tracking-[-0.025em] leading-[1.08] text-[#18181B]"
         >
           Live on{" "}
-          <span className="text-gradient-vivid">Arc Testnet</span>
+          <span className="text-gradient-brand">Arc Testnet</span>
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 10 }}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Check, AlertTriangle, Loader2 } from "lucide-react";
 
 const ARC_TESTNET = {
-  chainId: "0x4CEF52",
+  chainId: "0x4cef52",
   chainName: "Arc Testnet",
   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 6 },
   rpcUrls: ["https://rpc.testnet.arc.network"],
@@ -32,33 +32,31 @@ export function AddNetworkButton() {
     try {
       const ethereum = (window as any).ethereum;
       try {
+        // Try to switch first
         await ethereum.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: ARC_TESTNET.chainId }],
         });
       } catch (switchError: any) {
-        console.warn("wallet_switchEthereumChain failed, trying wallet_addEthereumChain. Error:", switchError);
-        // 4902 is the standard code. Some wallets return "Unrecognized chain ID" message.
-        if (
-          switchError.code === 4902 || 
-          (switchError.message && switchError.message.toLowerCase().includes("unrecognized"))
-        ) {
+        console.warn("wallet_switchEthereumChain failed, attempting wallet_addEthereumChain:", switchError);
+        // Fallback: Always try to add/update the chain parameters if switch fails for any reason
+        try {
           await ethereum.request({
             method: "wallet_addEthereumChain",
             params: [ARC_TESTNET],
           });
-        } else {
-          throw switchError;
+        } catch (addError: any) {
+          throw addError;
         }
       }
       setStatus("added");
     } catch (err: any) {
-      console.error("Failed to add Arc Testnet:", err);
+      console.error("Failed to configure Arc Testnet:", err);
       if (err.code === 4001) {
         setStatus("idle");
       } else {
         setStatus("error");
-        setErrorMessage(err.message || "MetaMask rejected the request.");
+        setErrorMessage(err.message || "Failed to switch network.");
         // Reset back to idle after 4 seconds to allow retry
         setTimeout(() => {
           setStatus("idle");

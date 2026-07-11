@@ -7,10 +7,14 @@ import {
   agentBudgetGuardAddress,
   publicClient,
 } from "@/lib/contracts";
+import { requireServerToken } from "@/lib/server-token";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const unauthorized = requireServerToken(request, "ARCSTREAM_ADMIN_TOKEN", "admin");
+  if (unauthorized) return unauthorized;
+
   try {
     const body = (await request.json()) as { agentAddress?: string };
     const agentAddress = body.agentAddress as Address | undefined;
@@ -52,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: "registration_failed",
-        message: error instanceof Error ? error.message : String(error),
+        message: "Agent wallet policy registration failed",
       },
       { status: 500 },
     );

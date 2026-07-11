@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateStructured } from "@/lib/gemini";
+import { rateLimit } from "@/lib/rate-limit";
 
 interface ScheduleResponse {
   isSchedule: boolean;
@@ -10,16 +11,21 @@ interface ScheduleResponse {
 }
 
 export async function POST(req: Request) {
+  const limited = await rateLimit(req, { key: "agent:schedule", limit: 10, windowSeconds: 60 });
+  if (limited) return limited;
+
   try {
-    const { prompt } = await req.json();
-    if (!prompt || !prompt.trim()) {
+    const { prompt } = (await req.json()) as { prompt?: unknown };
+    if (typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
+
+    const normalizedPrompt = prompt.trim().slice(0, 500);
 
     const systemPrompt = `You are an AI scheduling intent parser for ArcStream.
 Analyze the user's natural language request and check if they want to schedule a recurring/future report or task.
 
-User request: "${prompt}"
+User request: ${JSON.stringify(normalizedPrompt)}
 
 If the request is a scheduling command (e.g. "cứ vào 5h UTC...", "every Monday at 9am...", "hàng ngày lúc..."), extract:
 1. isSchedule: true
@@ -42,6 +48,6 @@ Respond with valid JSON only.`;
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error in schedule parser route:", error);
-    return NextResponse.json({ isSchedule: false, error: String(error) }, { status: 500 });
+    return NextResponse.json({ isSchedule: false, error: "schedule_parser_failed" }, { status: 500 });
   }
 }

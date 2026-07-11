@@ -2,12 +2,13 @@
 
 import { ReactNode, useState } from "react";
 import { ResearchAgentDemo } from "@/components/ResearchAgentDemo";
+import { CircleMarketplaceOrchestrator } from "@/components/CircleMarketplaceOrchestrator";
 import { AppNav } from "@/components/AppNav";
 import { PlaygroundWalletPanel } from "@/components/PlaygroundWalletPanel";
 import { Cpu, Zap, ReceiptText, Sliders } from "lucide-react";
 
 export default function PlaygroundPage() {
-  const [activeTab, setActiveTab] = useState<"manage" | "run">("manage");
+  const [activeTab, setActiveTab] = useState<"manage" | "run" | "services">("manage");
 
   return (
     <div
@@ -52,26 +53,24 @@ export default function PlaygroundPage() {
             style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
           >
             <Cpu className="w-3.5 h-3.5" />
-            Circle Agent Wallet - x402 - Arc
+            Circle Agent Wallet · x402 · Arc
           </span>
           <h1
             className="text-4xl md:text-5xl font-black tracking-tight text-neutral-900 leading-tight mb-4 max-w-3xl"
             style={{ fontFamily: "var(--font-outfit, Outfit, sans-serif)" }}
           >
-            Agents that pay their own way
+            Agents that pay for their own tools
           </h1>
           <p
             className="text-[16px] text-neutral-500 max-w-2xl leading-relaxed"
             style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
           >
-            A Circle agent wallet autonomously pays for x402 tools in USDC on
-            Arc Testnet - under a hard budget policy it cannot exceed. No human
-            signing, no API keys, no subscriptions.
+            Each Agent has its own wallet, pays USDC on Arc Testnet to unlock x402 tools, and stays under a hard spending policy before any payment is made.
           </p>
         </div>
 
         {/* Segmented Tab Navigation */}
-        <div className="flex p-1.5 bg-neutral-100/90 border border-neutral-200/50 rounded-2xl max-w-[480px] mb-8 gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+        <div className="flex p-1.5 bg-neutral-100/90 border border-neutral-200/50 rounded-2xl max-w-[680px] mb-8 gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
           <button
             onClick={() => setActiveTab("manage")}
             className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -82,7 +81,7 @@ export default function PlaygroundPage() {
             type="button"
           >
             <Sliders className="w-4 h-4" />
-            1. Quản lý & Huấn luyện
+            1. Create Agent
           </button>
           <button
             onClick={() => setActiveTab("run")}
@@ -94,7 +93,19 @@ export default function PlaygroundPage() {
             type="button"
           >
             <Zap className="w-4 h-4" />
-            2. Chạy tác vụ AI
+            2. Run Arc Demo
+          </button>
+          <button
+            onClick={() => setActiveTab("services")}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "services"
+                ? "bg-white text-[#0084FF] shadow-sm border border-neutral-200/20"
+                : "text-neutral-500 hover:text-neutral-800"
+            }`}
+            type="button"
+          >
+            <ReceiptText className="w-4 h-4" />
+            3. Circle Marketplace (Coming Soon)
           </button>
         </div>
 
@@ -102,8 +113,10 @@ export default function PlaygroundPage() {
         <div className="transition-all duration-300">
           {activeTab === "manage" ? (
             <PlaygroundWalletPanel />
-          ) : (
+          ) : activeTab === "run" ? (
             <ResearchAgentDemo />
+          ) : (
+            <CircleMarketplaceOrchestrator />
           )}
         </div>
 

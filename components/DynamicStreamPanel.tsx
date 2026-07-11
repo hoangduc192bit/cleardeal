@@ -80,15 +80,9 @@ export function DynamicStreamPanel({
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#0084FF]" />
           <span className="font-mono text-[10px] uppercase tracking-widest text-[#0084FF]">Live Sync</span>
         </div>
-        <pre
-          className="relative z-10 overflow-x-auto font-mono text-[12px] leading-relaxed text-emerald-400"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(data, null, 2)
-              .replace(/"([^"]+)":/g, '<span style="color:#8B5CF6">"$1"</span>:')
-              .replace(/: ([\d.]+)/g, ': <span style="color:#0084FF">$1</span>')
-              .replace(/: "([^"]+)"/g, ': <span style="color:#059669">"$1"</span>')
-          }}
-        />
+        <pre className="relative z-10 overflow-x-auto font-mono text-[12px] leading-relaxed text-emerald-400">
+          {JSON.stringify(data, null, 2)}
+        </pre>
       </div>
     </section>
   );

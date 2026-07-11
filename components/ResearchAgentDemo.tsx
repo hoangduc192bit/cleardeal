@@ -38,11 +38,11 @@ const PERSONAS: PersonaConfig[] = [
     name: "Business Analyst",
     emoji: "💼",
     cost: "0.12",
-    description: "Phân tích SWOT doanh nghiệp và nghiên cứu xu hướng thị trường.",
+    description: "Runs business SWOT analysis and market trend research.",
     topics: [
-      "Phân tích đối thủ cạnh tranh ngành in ấn offset tại Việt Nam",
-      "Đánh giá SWOT mô hình thanh toán USDC của Circle Financial",
-      "Nghiên cứu xu hướng giá nguyên liệu giấy carton năm 2026"
+      "Analyze competitors in the offset printing market",
+      "Evaluate the SWOT of Circle Financial's USDC payment model",
+      "Research 2026 carton paper raw material price trends"
     ],
   },
   {
@@ -50,11 +50,11 @@ const PERSONAS: PersonaConfig[] = [
     name: "Web3 Researcher",
     emoji: "🌐",
     cost: "0.09",
-    description: "Quét tin tức Web3, chấm điểm tâm lý thị trường crypto.",
+    description: "Scans Web3 signals and scores crypto market sentiment.",
     topics: [
-      "Đo lường tâm lý thị trường về dự phóng giá Bitcoin",
-      "Phân tích xu hướng DeFi và phí gas trên mạng Arc",
-      "Đánh giá sự tăng trưởng của stablecoin USDC trên Base"
+      "Measure market sentiment around Bitcoin price forecasts",
+      "Analyze DeFi trends and gas costs on Arc",
+      "Evaluate USDC stablecoin growth on Base"
     ],
   },
   {
@@ -62,11 +62,11 @@ const PERSONAS: PersonaConfig[] = [
     name: "Social Writer",
     emoji: "📝",
     cost: "0.08",
-    description: "Tóm tắt tin tức, viết email digest/bài đăng quảng bá thương hiệu.",
+    description: "Summarizes news and writes email digests or brand posts.",
     topics: [
-      "Viết bài social quảng bá công nghệ in offset bảo vệ môi trường",
-      "Soạn bản tin tóm tắt lợi ích của ví AI Agent cho doanh nghiệp",
-      "Soạn bài viết tóm tắt xu hướng làm việc từ xa năm 2026"
+      "Write a social post promoting eco-friendly offset printing",
+      "Draft a newsletter about AI Agent wallet benefits for businesses",
+      "Write a short post about 2026 remote-work trends"
     ],
   },
 ];
@@ -109,7 +109,6 @@ function StepCard({
     "web-intel": { name: "Tavily Search (3P)", url: "https://agents.circle.com/services", registryId: "04", provider: "3P" },
     analyze: { name: "Perplexity AI (3P)", url: "https://agents.circle.com/services", registryId: "08", provider: "3P" },
     sentiment: { name: "Sentiment Scorer (3P)", url: "https://agents.circle.com/services", registryId: "12", provider: "3P" },
-    "report-writer": { name: "Creative Writer (3P)", url: "https://agents.circle.com/services", registryId: "15", provider: "3P" },
   };
 
   const circleTool = step.toolId ? registryMapping[step.toolId] : null;
@@ -120,9 +119,13 @@ function StepCard({
         ? "Strengths, weaknesses, opportunities extracted"
         : step.toolId === "web-intel"
           ? "Key facts extracted from web source"
-          : step.toolId === "report-writer"
-            ? "Final report generated"
-            : `${(step.result as { toolsFound?: number }).toolsFound ?? 0} tools found in catalog`
+          : step.toolId === "sentiment"
+            ? "External sentiment signal scored"
+            : step.toolId === "summarize"
+              ? "External document digested"
+              : step.toolId === null && (step.result as { internalReasoning?: boolean }).internalReasoning
+                ? "Internal synthesis completed - no x402 payment charged"
+                : `${(step.result as { toolsFound?: number }).toolsFound ?? 0} tools found in catalog`
       : step.status === "failed"
         ? "Tool call failed"
         : step.status === "skipped"
@@ -233,7 +236,6 @@ export function ResearchAgentDemo() {
     name: string;
     persona: "business" | "web3" | "social";
     address: string;
-    privateKey: string;
     instructions?: string;
   } | null>(null);
 
@@ -266,7 +268,6 @@ export function ResearchAgentDemo() {
   }, []);
 
   const handlePersonaChange = (p: "business" | "web3" | "social") => {
-    if (activeAgent) return; // Locked to selected agent's role
     setPersona(p);
     const config = PERSONAS.find((x) => x.id === p);
     if (config) {
@@ -278,7 +279,7 @@ export function ResearchAgentDemo() {
     if (!topic.trim()) return;
 
     // Check for scheduling intent keywords (Vietnamese & English)
-    const isSchedulingKeyword = /cứ vào|mỗi ngày|hàng ngày|every day|hẹn giờ|lên lịch/i.test(topic);
+    const isSchedulingKeyword = /every day|daily|every monday|schedule|cron|at 5am|at 5:00/i.test(topic);
     if (isSchedulingKeyword) {
       setPhase("running");
       setVisibleSteps([]);
@@ -301,24 +302,27 @@ export function ResearchAgentDemo() {
           const parsedSchedule = await scheduleRes.json();
           if (parsedSchedule.isSchedule) {
             // Save to localStorage
-            const savedSchedules = localStorage.getItem("arcstream_schedules");
-            const list = savedSchedules ? JSON.parse(savedSchedules) : [];
-            const newSchedule = {
+            const savedWorkflows = localStorage.getItem("arcstream_workflows");
+            const list = savedWorkflows ? JSON.parse(savedWorkflows) : [];
+            const newWorkflow = {
               id: Math.random().toString(36).substring(2, 9),
               agentId: activeAgent ? activeAgent.id : "default",
               agentName: activeAgent ? activeAgent.name : "Default Agent",
-              subject: parsedSchedule.subject || "AI Report",
+              name: parsedSchedule.subject || "AI Report",
+              objective: parsedSchedule.subject || "Build and deliver a recurring agent report.",
+              trigger: parsedSchedule.humanReadable || "Daily at 5:00 UTC",
               cronExpression: parsedSchedule.cronExpression || "0 5 * * *",
-              humanReadable: parsedSchedule.humanReadable || "Hàng ngày vào lúc 5:00 UTC",
+              budgetUsdc: parsedSchedule.budgetUsdc || "0.50",
+              tools: parsedSchedule.tools || ["ArcStream tool catalog"],
               destinations: parsedSchedule.destinations || ["Gmail", "Telegram"],
-              status: "active",
+              status: "ready",
               createdAt: new Date().toISOString(),
             };
-            localStorage.setItem("arcstream_schedules", JSON.stringify([...list, newSchedule]));
-            window.dispatchEvent(new Event("schedulesChanged"));
+            localStorage.setItem("arcstream_workflows", JSON.stringify([...list, newWorkflow]));
+            window.dispatchEvent(new Event("workflowsChanged"));
 
             setPhase("idle");
-            alert(`🎉 Hẹn giờ thành công!\n\nNhiệm vụ: "${newSchedule.subject}"\nTần suất: ${newSchedule.humanReadable}\nKênh nhận: ${newSchedule.destinations.join(", ")}`);
+            alert(`🎉 Workflow created!\n\nWorkflow: "${newWorkflow.name}"\nTrigger: ${newWorkflow.trigger}\nBudget: ${newWorkflow.budgetUsdc} USDC/day\nDelivery: ${newWorkflow.destinations.join(", ")}`);
             setTopic("");
             return;
           }
@@ -335,6 +339,7 @@ export function ResearchAgentDemo() {
     setAccruedCost(0);
     setRunningLog([
       `Initializing ${activeAgent ? activeAgent.name : (PERSONAS.find((p) => p.id === persona)?.name ?? "Agent")}...`,
+      `Run role: ${PERSONAS.find((p) => p.id === persona)?.name ?? "Agent"}`,
       activeAgent ? `Agent Wallet: ${activeAgent.address}` : `Using Server Default Wallet`,
       `Topic: "${topic}"`,
       `Loading policy: max $0.50 USDC | enforced before each x402 call`,
@@ -361,7 +366,8 @@ export function ResearchAgentDemo() {
           topic,
           maxBudgetUsdc: "0.50",
           persona,
-          agentPrivateKey: activeAgent ? activeAgent.privateKey : undefined,
+          paymentMode: "demo",
+          agentAddress: activeAgent ? activeAgent.address : undefined,
           instructions: activeAgent ? activeAgent.instructions : undefined,
         }),
       });
@@ -381,7 +387,7 @@ export function ResearchAgentDemo() {
       for (let i = 0; i < data.steps.length; i++) {
         await new Promise((r) => setTimeout(r, 450));
         setVisibleSteps((prev) => [...prev, data.steps[i]]);
-        if (data.steps[i].costUsdc) {
+        if (data.steps[i].status === "done" && data.steps[i].costUsdc) {
           setAccruedCost(
             (prev) => prev + parseFloat(data.steps[i].costUsdc!),
           );
@@ -442,44 +448,8 @@ export function ResearchAgentDemo() {
           </p>
         </div>
 
-        {/* Persona Selector */}
-        <div>
-          <label
-            className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest block mb-2.5"
-            style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
-          >
-            Select Agent Role
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {PERSONAS.map((p) => {
-              const active = persona === p.id;
-              return (
-                <button
-                  key={p.id}
-                  disabled={isBusy}
-                  onClick={() => handlePersonaChange(p.id)}
-                  type="button"
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer text-center ${
-                    active
-                      ? "bg-blue-50 border-[#0084FF] text-[#0084FF] shadow-sm ring-1 ring-blue-500/10"
-                      : "bg-white border-gray-100 hover:border-gray-200 text-neutral-600"
-                  } disabled:opacity-50`}
-                  style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
-                >
-                  <span className="text-xl mb-1">{p.emoji}</span>
-                  <span className="text-[12px] font-bold block">{p.name}</span>
-                  <span className="text-[10px] opacity-75 font-mono mt-0.5">${p.cost} USDC</span>
-                </button>
-              );
-            })}
-          </div>
-          <p
-            className="text-[12px] text-neutral-400 mt-2.5 leading-relaxed"
-            style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
-          >
-            {PERSONAS.find((x) => x.id === persona)?.description}
-          </p>
-        </div>
+
+
 
         {/* Topic input */}
         <div>
@@ -494,15 +464,19 @@ export function ResearchAgentDemo() {
             disabled={isBusy}
             maxLength={200}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Soạn phân tích đối thủ cạnh tranh ngành in offset..."
+            placeholder="e.g. Analyze competitors in the offset printing market..."
             style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
             type="text"
             value={topic}
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            {PERSONAS.find((x) => x.id === persona)?.topics.map((t) => (
+            {[
+              "Analyze competitors in the offset printing market",
+              "Measure market sentiment around Bitcoin price forecasts",
+              "Evaluate USDC stablecoin growth on Base and Arc",
+            ].map((t) => (
               <button
-                className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-medium text-neutral-500 hover:border-[#0084FF] hover:text-[#0084FF] hover:bg-blue-50/60 transition-all disabled:opacity-40 cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-medium text-neutral-500 hover:border-[#0084FF] hover:text-[#0084FF] hover:bg-neutral-50 transition-all disabled:opacity-40 cursor-pointer"
                 disabled={isBusy}
                 key={t}
                 onClick={() => setTopic(t)}
@@ -526,10 +500,10 @@ export function ResearchAgentDemo() {
               On-Chain Cap Active
             </div>
             <div
-              className="text-[12px] text-neutral-500 mt-0.5"
+              className="text-[12px] text-blue-700/85 mt-0.5"
               style={{ fontFamily: "var(--font-inter, Inter, sans-serif)" }}
             >
-              Estimated cost: ${PERSONAS.find((x) => x.id === persona)?.cost} USDC · Enforced on-chain
+              Estimated cost: ~$0.10 USDC · Enforced on-chain
             </div>
           </div>
         </div>
@@ -629,8 +603,8 @@ export function ResearchAgentDemo() {
               {[
                 ["01", "Choose an Agent Role and topic"],
                 ["02", "Agent discovers required tools from catalog"],
-                ["03", "Pays automatically through AgentBudgetGuard on-chain"],
-                ["04", "Report Writer synthesizes findings into target format"],
+                ["03", "Pays only for external data/tool calls"],
+                ["04", "Synthesizes the final report internally at no extra x402 charge"],
               ].map(([n, text]) => (
                 <li key={n} className="flex gap-3 text-[12px]">
                   <span className="text-[#0084FF] font-bold font-mono shrink-0">

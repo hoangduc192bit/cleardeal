@@ -2,6 +2,7 @@ import { createAgentBudgetPolicy } from "@/lib/agent-budget";
 import { payWithCircleAgentWallet, type CircleTransferResult } from "@/lib/circle-agent-wallet";
 import { getToolById } from "@/lib/tool-catalog";
 import type { Tool } from "@/lib/tool-catalog";
+import { X402_DEMO_AUTHORIZATION, X402_DEMO_HEADER } from "@/lib/x402/demo";
 
 export interface ResearchAgentStep {
   step: number;
@@ -40,20 +41,33 @@ async function callTool<T>(
   body: Record<string, unknown>,
   baseUrl: string,
   agentPrivateKey?: string,
-): Promise<{ data: T | null; durationMs: number; payment: CircleTransferResult | null }> {
+  paymentMode: "demo" | "paid" = "demo",
+): Promise<{
+  data: T | null;
+  durationMs: number;
+  payment: CircleTransferResult | null;
+  error: string | null;
+  mode: "demo" | "paid";
+}> {
   const start = Date.now();
   try {
-    const payment = await payWithCircleAgentWallet({
-      to: tool.providerWallet,
-      amountUsdc: tool.pricePerCall,
-      agentPrivateKey,
-    });
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    let payment: CircleTransferResult | null = null;
+
+    if (paymentMode === "paid") {
+      payment = await payWithCircleAgentWallet({
+        to: tool.providerWallet,
+        amountUsdc: tool.pricePerCall,
+        agentPrivateKey,
+      });
+      headers["x-arcstream-payment-tx"] = payment.txHash;
+    } else {
+      headers[X402_DEMO_HEADER] = X402_DEMO_AUTHORIZATION;
+    }
+
     const res = await fetch(`${baseUrl}${tool.endpoint}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-arcstream-payment-tx": payment.txHash,
-      },
+      headers,
       body: JSON.stringify(body),
     });
     const json = await res.json();
@@ -61,9 +75,17 @@ async function callTool<T>(
       data: res.ok ? (json.payload as T) : null,
       durationMs: Date.now() - start,
       payment,
+      error: res.ok ? null : ((json as { error?: string }).error ?? `HTTP ${res.status}`),
+      mode: paymentMode,
     };
-  } catch {
-    return { data: null, durationMs: Date.now() - start, payment: null };
+  } catch (error) {
+    return {
+      data: null,
+      durationMs: Date.now() - start,
+      payment: null,
+      error: error instanceof Error ? error.message : String(error),
+      mode: paymentMode,
+    };
   }
 }
 
@@ -86,10 +108,13 @@ export async function runResearchAgent(
   persona = "business",
   agentPrivateKey?: string,
   instructions?: string,
+  requestedPaymentMode?: "demo" | "paid",
 ): Promise<ResearchAgentReport> {
   const steps: ResearchAgentStep[] = [];
   const budget = createAgentBudgetPolicy(maxBudgetUsdc);
   const toolsUsed: string[] = [];
+  const paymentMode =
+    requestedPaymentMode ?? (process.env.RESEARCH_AGENT_PAYMENT_MODE === "paid" ? "paid" : "demo");
 
   steps.push({
     step: 1,
@@ -166,17 +191,18 @@ export async function runResearchAgent(
       toolInput = { text: topic, maxWords: 150 };
     }
 
-    const { data: resultData, durationMs, payment } = await callTool<unknown>(
+    const { data: resultData, durationMs, payment, error: toolError, mode } = await callTool<unknown>(
       tool,
       toolInput,
       baseUrl,
       agentPrivateKey,
+      paymentMode,
     );
 
     steps[currentStepIndex].status = resultData ? "done" : "failed";
     steps[currentStepIndex].result = resultData
-      ? { ...(resultData as Record<string, unknown>), x402Payment: payment }
-      : { x402Payment: payment };
+      ? { ...(resultData as Record<string, unknown>), x402Payment: payment, paymentMode: mode }
+      : { x402Payment: payment, paymentMode: mode, error: toolError };
     steps[currentStepIndex].durationMs = durationMs;
 
     if (resultData) {
@@ -243,11 +269,12 @@ export async function runResearchAgent(
           ? `Social Digest: ${topic}`
           : `Business Report: ${topic}`;
 
-    const { data: reportResult, durationMs, payment } = await callTool<NonNullable<ResearchAgentReport["report"]>>(
+    const { data: reportResult, durationMs, payment, error: toolError, mode } = await callTool<NonNullable<ResearchAgentReport["report"]>>(
       reportTool,
       { topic: reportTitle, findings, format: customFormat, instructions },
       baseUrl,
       agentPrivateKey,
+      paymentMode,
     );
     finalReport = reportResult;
     if (reportResult) {
@@ -259,8 +286,8 @@ export async function runResearchAgent(
     }
     steps[reportStepIndex].durationMs = durationMs;
     steps[reportStepIndex].result = reportResult
-      ? { ...reportResult, x402Payment: payment }
-      : { x402Payment: payment };
+      ? { ...reportResult, x402Payment: payment, paymentMode: mode }
+      : { x402Payment: payment, paymentMode: mode, error: toolError };
   }
 
   const successCount = steps.filter((s) => s.status === "done").length;

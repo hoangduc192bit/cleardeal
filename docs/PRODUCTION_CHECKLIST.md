@@ -4,12 +4,14 @@ ArcStream can be prepared for a production-grade Arc Testnet launch, but it must
 
 ## Security
 
-- [ ] Resolve `npm audit --omit=dev` high vulnerabilities.
-- [ ] Resolve or formally accept all remaining production dependency audit findings.
+- [x] Resolve `npm audit --omit=dev` high vulnerabilities.
+- [x] Resolve or formally accept all remaining production dependency audit findings.
+- [x] Gate paid agent execution routes behind server-side tokens.
 - [ ] Configure `NEXT_PUBLIC_APP_URL` on Vercel so production metadata does not fall back to localhost.
 - [ ] Configure Vercel KV or Upstash Redis REST env vars for rate limiting and x402 replay protection.
+- [ ] Verify deployed `/api/health` returns HTTP 200 and `ready: true`.
 - [ ] Validate security headers on the deployed Vercel URL.
-- [ ] Move CSP from `Content-Security-Policy-Report-Only` to enforced `Content-Security-Policy` after wallet testing.
+- [x] Enforce `Content-Security-Policy` in production; keep report-only mode for local development.
 - [ ] Confirm no `.env`, `.env.local`, deployer keys, private keys, seed phrases, or secrets are committed.
 - [ ] Confirm no private keys or deployer keys are configured on Vercel for the demo frontend.
 - [ ] Add monitoring and incident response contacts.
@@ -29,6 +31,8 @@ ArcStream can be prepared for a production-grade Arc Testnet launch, but it must
 - [ ] Verify x402 returns HTTP 200 only after a valid Arc Testnet USDC transfer tx hash.
 - [x] Add durable x402 replay storage support through Vercel KV / Upstash Redis REST.
 - [ ] Confirm the deployed Vercel project has `KV_REST_API_URL` + `KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`.
+- [ ] Confirm the deployed Vercel project has `ARCSTREAM_AGENT_RUN_TOKEN`.
+- [ ] Confirm the deployed Vercel project has `ARCSTREAM_ADMIN_TOKEN` before enabling deployer-backed wallet policy registration.
 
 ## Product QA
 
@@ -40,6 +44,8 @@ ArcStream can be prepared for a production-grade Arc Testnet launch, but it must
 ## Smart Contracts
 
 - [ ] Complete professional smart contract audit before production/mainnet claims.
+- [x] Add automated tests for streaming settlement/refunds, budget limits, payment replay, daily reset, pause controls, and registry moderation.
+- [x] Confirm `npm run test:contracts` passes all contract tests.
 - [x] Verify deployed contract source on ArcScan.
 - [ ] Add a documented contract upgrade/deployment policy.
 - [ ] Rehearse contract incident response for stuck funds, wrong token address, and provider payout errors.

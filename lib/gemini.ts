@@ -12,7 +12,29 @@ export async function generateInsight(
 ): Promise<string> {
   const keys = getKeys();
   if (keys.length === 0) {
-    console.error("No GEMINI_API_KEY configured.");
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (openrouterKey) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openrouterKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-v4-flash",
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          return json.choices?.[0]?.message?.content ?? fallback;
+        }
+      } catch (error) {
+        console.warn("OpenRouter API Error in generateInsight:", error);
+      }
+    }
+    console.error("No GEMINI_API_KEY or OPENROUTER_API_KEY configured.");
     return fallback;
   }
 
@@ -41,7 +63,34 @@ export async function generateStructured<T>(
 ): Promise<T> {
   const keys = getKeys();
   if (keys.length === 0) {
-    console.error("No GEMINI_API_KEY configured.");
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (openrouterKey) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openrouterKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: process.env.OPENROUTER_MODEL ?? "deepseek/deepseek-v4-flash",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          const content = json.choices?.[0]?.message?.content?.trim();
+          if (content) {
+            const cleaned = content.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "");
+            return JSON.parse(cleaned) as T;
+          }
+        }
+      } catch (error) {
+        console.warn("OpenRouter API Error in generateStructured:", error);
+      }
+    }
+    console.error("No GEMINI_API_KEY or OPENROUTER_API_KEY configured.");
     return fallback;
   }
 

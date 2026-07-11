@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "scripts",
+    "test",
     "contracts",
     "hardhat.config.ts",
     "typechain-types",

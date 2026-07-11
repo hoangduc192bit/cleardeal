@@ -11,6 +11,7 @@ tsconfig.tsbuildinfo
 .claude
 .agents
 /EverOS
+/scratch
 
 # Environment & secrets - never commit
 .env*

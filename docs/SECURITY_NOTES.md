@@ -1,8 +1,8 @@
 # Security Notes
 
-Last reviewed: 2026-06-07
+Last reviewed: 2026-07-11
 
-ArcStream is hardened for an Arc Testnet on-chain public launch. It is not mainnet-ready and must not be treated as audited real-funds production software.
+ArcStream is hardened for a production-grade Arc Testnet public launch. It is not mainnet-ready and must not be treated as audited real-funds production software.
 
 ## Dependency Audit
 
@@ -12,55 +12,42 @@ Command run:
 npm audit --omit=dev
 ```
 
-Current result after attempting non-breaking fixes:
+Current production result:
 
-- 37 production audit findings remain
-- 27 high severity findings
-- 10 moderate severity findings
+- `npm audit --omit=dev` returns 0 vulnerabilities.
+- `npm audit fix` updated the dependency tree to resolve the remaining production `form-data` advisory.
 
-`npm audit fix --omit=dev --legacy-peer-deps` was attempted. It did not resolve the remaining issues without breaking upgrades.
+Full `npm audit` still reports dev/tooling findings through Hardhat, Solidity coverage, Mocha, and related contract-development packages. Those findings are not present in the production dependency audit and should be handled in a dedicated contract-tooling upgrade pass.
 
-## Remaining Findings
+## Remaining Development Tooling Findings
 
-### Next.js
+Full dependency audit still reports findings in dev dependencies such as:
 
-- Package: `next@14.2.35`
-- Severity: high
-- Status: unresolved
-- Reason: npm reports the fix path as `npm audit fix --force`, which would install `next@16.2.7`. That is a major framework upgrade from Next 14 to Next 16 and needs a dedicated migration/test pass.
+- `hardhat`
+- `solidity-coverage`
+- `mocha`
+- `lodash`
+- `serialize-javascript`
+- `tmp`
+- `undici`
+- `cookie`
+- `bn.js`
+- `elliptic`
 
-The current app does not configure `next/image` remote patterns, rewrites, middleware, or i18n, which reduces exposure to several listed advisories, but the package-level audit finding still remains.
+Do not run `npm audit fix --force` casually. The suggested fixes require a breaking Hardhat/tooling migration and should be tested separately from the frontend production launch.
 
-### Lodash
+## Paid Agent Route Guards
 
-- Package: `lodash@4.17.21`
-- Severity: high
-- Status: unresolved in audit output
-- Reason: ArcStream source does not import lodash directly. The dependency appears through development tooling, primarily Hardhat-related packages, but npm audit still reports it in the installed tree.
+Paid or deployer-backed agent routes are gated by server-side tokens:
 
-Do not add direct runtime lodash usage. Re-check this after future Hardhat/tooling updates.
+- `POST /api/agent/x402-pay` requires `ARCSTREAM_AGENT_RUN_TOKEN`.
+- `POST /api/agent/research` requires `ARCSTREAM_AGENT_RUN_TOKEN` when `paymentMode` is `paid` or an agent private key is supplied.
+- `POST /api/agent/orchestrate` requires `ARCSTREAM_AGENT_RUN_TOKEN` when `executePaid` is enabled.
+- `POST /api/agent/wallet/register` requires `ARCSTREAM_ADMIN_TOKEN` before it can use `DEPLOYER_PRIVATE_KEY`.
 
-### Additional Transitive Production Findings
+Public research runs use `paymentMode: "demo"`; public Marketplace runs are planning-only. Neither path spends Circle wallet funds. Telegram credentials are accepted only from server environment variables.
 
-- Packages: `form-data`, `hono`
-- Severity: high
-- Status: unresolved in audit output
-- Reason: these are pulled through the current dependency tree, primarily wallet/appkit-related packages. `npm audit fix` did not resolve them without leaving the same wallet-stack blockers.
-
-### Wallet Dependency Chain
-
-- Packages: `wagmi`, `@wagmi/connectors`, `@walletconnect/*`, `@reown/*`, `@metamask/*`, transitive `uuid`, `ws`, and nested `viem`
-- Severity: moderate
-- Status: unresolved
-- Reason: npm reports the fix path as `npm audit fix --force`, with breaking changes to the wallet stack. Depending on npm resolution, the suggested path can downgrade or major-upgrade `wagmi`/`viem`, which can break wallet connectors.
-
-Current checked latest compatible versions:
-
-- `@rainbow-me/rainbowkit@2.2.11`
-- `wagmi@2.19.5`
-- `viem@2.52.2`
-
-These are already at the latest versions available in their current compatible line at the time of review.
+Internal callbacks use the configured `NEXT_PUBLIC_APP_URL`, never a caller-controlled `Origin` header. Production refuses callbacks when that URL is missing or is non-HTTPS.
 
 ## Security Headers
 
@@ -74,7 +61,19 @@ Enforced:
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 - `Strict-Transport-Security` in production only
 
-CSP is currently `Content-Security-Policy-Report-Only` to avoid breaking wallet connectors, WalletConnect, Arc RPC, Vercel scripts, and inline styles during demo launch. After deployed wallet testing, tighten and enforce CSP.
+CSP is enforced as `Content-Security-Policy` in production and remains report-only in local development. Production excludes `unsafe-eval`; inline scripts and styles remain allowed for Next.js and wallet connector compatibility and should be tightened further with a nonce-based policy in a future pass.
+
+## Contract Tests
+
+`npm run test:contracts` covers the testnet product's core financial invariants:
+
+- daily budget enforcement and reset
+- replayed payment ID rejection
+- inactive and paused policy rejection
+- streaming escrow settlement and refunds
+- settlement capped at the subscriber deposit
+- USDC escrow rescue prevention
+- permissionless provider registration and owner-only moderation
 
 ## WalletConnect
 
@@ -84,7 +83,7 @@ Set a real `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` in Vercel before wider public 
 
 ## x402 On-chain Verification
 
-The x402 endpoints now verify Arc Testnet USDC transfer receipts on-chain before unlocking data.
+The x402 endpoints verify Arc Testnet USDC transfer receipts on-chain before unlocking data.
 
 Current safeguards:
 

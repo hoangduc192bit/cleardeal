@@ -1,12 +1,17 @@
 import { getPaidStreamConfig } from "@/lib/x402/paid-streams";
 import { payWithCircleAgentWallet } from "@/lib/circle-agent-wallet";
 import { rateLimit } from "@/lib/rate-limit";
+import { requireServerToken } from "@/lib/server-token";
+import { getTrustedAppUrl } from "@/lib/app-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const unauthorized = requireServerToken(request, "ARCSTREAM_AGENT_RUN_TOKEN", "agent_run");
+  if (unauthorized) return unauthorized;
+
   const limited = await rateLimit(request, {
     key: "agent:x402-pay",
     limit: 10,
@@ -22,8 +27,12 @@ export async function POST(request: Request) {
   }
 
   const stream = getPaidStreamConfig(body.streamId);
-  const origin = request.headers.get("origin");
-  const baseUrl = origin ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  let baseUrl: string;
+  try {
+    baseUrl = getTrustedAppUrl();
+  } catch {
+    return Response.json({ error: "app_url_not_configured" }, { status: 503 });
+  }
 
   try {
     const payment = await payWithCircleAgentWallet({
@@ -56,7 +65,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error: "circle_agent_payment_failed",
-        message: error instanceof Error ? error.message : "Unknown error",
+        message: "Circle agent payment could not be completed",
       },
       { status: 500 },
     );

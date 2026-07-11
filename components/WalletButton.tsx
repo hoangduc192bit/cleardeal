@@ -268,14 +268,14 @@ export function WalletButton() {
               <button
                 className="w-full flex items-center justify-between p-3 rounded-2xl border border-gray-100 bg-gray-50 hover:bg-blue-50/50 hover:border-blue-100 transition-all text-left disabled:opacity-60 cursor-pointer"
                 disabled={signingIn !== null}
-                onClick={() => handleGoogleSignIn("hoangduc192bit@gmail.com", "Hoàng Đức")}
+                onClick={() => handleGoogleSignIn("hoangduc192bit@gmail.com", "ArcStream Demo")}
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-[13px]">
-                    HĐ
+                    AD
                   </div>
                   <div className="flex flex-col leading-tight">
-                    <span className="text-[13px] font-bold text-neutral-800">Hoàng Đức</span>
+                    <span className="text-[13px] font-bold text-neutral-800">ArcStream Demo</span>
                     <span className="text-[11px] text-neutral-400">hoangduc192bit@gmail.com</span>
                   </div>
                 </div>

@@ -65,7 +65,7 @@ export function Hero() {
           <h1 className="font-display text-[44px] font-black leading-[1.02] tracking-[-0.035em] text-slate-900 sm:text-[56px] lg:text-[64px]">
             Agents can pay
             <br />
-            <span className="text-gradient-vivid">for their own tools.</span>
+            <span className="text-gradient-brand">for their own tools.</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-slate-500">
