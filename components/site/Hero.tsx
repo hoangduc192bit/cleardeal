@@ -5,6 +5,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect } from "react";
 import { ArrowRight, Globe2, ReceiptText, ShieldCheck, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
+import { HeroAgent } from "@/components/site/HeroAgent";
 
 function Avatar({ i }: { i: number }) {
   const colors = [
@@ -112,14 +113,7 @@ export function Hero() {
           className="relative mx-auto aspect-square w-full max-w-[520px]"
         >
           <div className="absolute inset-0 overflow-hidden rounded-[32px] bg-gradient-to-br from-white to-slate-100 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
-            <video
-              src="https://strvid.nyc3.cdn.digitaloceanspaces.com/motionsite/hero_robo_video.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-full w-full object-cover"
-            />
+            <HeroAgent />
           </div>
 
           <FloatingBadge
