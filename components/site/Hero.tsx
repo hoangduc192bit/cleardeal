@@ -5,7 +5,7 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect } from "react";
 import { ArrowRight, Globe2, ReceiptText, ShieldCheck, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
-import { HeroAgent } from "@/components/site/HeroAgent";
+import { SplineHeroAgent } from "@/components/site/SplineHeroAgent";
 
 function Avatar({ i }: { i: number }) {
   const colors = [
@@ -113,7 +113,7 @@ export function Hero() {
           className="relative mx-auto aspect-square w-full max-w-[520px]"
         >
           <div className="absolute inset-0 overflow-hidden rounded-[32px] bg-gradient-to-br from-white to-slate-100 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
-            <HeroAgent />
+            <SplineHeroAgent />
           </div>
 
           <FloatingBadge
