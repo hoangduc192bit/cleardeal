@@ -15,7 +15,7 @@ async function main() {
   console.log(`Native gas balance: ${ethers.formatEther(balance)} USDC`);
 
   if (balance === 0n) {
-    throw new Error("Burner deployer has no Arc Testnet USDC for gas");
+    throw new Error("ClearDeal deployer has no Arc Testnet USDC for gas");
   }
 }
 

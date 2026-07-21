@@ -1,188 +1,100 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { useEffect } from "react";
-import { ArrowRight, Globe2, ReceiptText, ShieldCheck, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
-import { SplineHeroAgent } from "@/components/site/SplineHeroAgent";
+import { ArrowRight, Check, Network } from "lucide-react";
 
-function Avatar({ i }: { i: number }) {
-  const colors = [
-    "from-[#0084FF] to-[#5BB2FF]",
-    "from-sky-400 to-cyan-500",
-    "from-emerald-400 to-teal-500",
-  ];
-  return <span className={`relative inline-block h-8 w-8 rounded-full bg-gradient-to-br ${colors[i]} ring-2 ring-white`} />;
-}
+import { AnimatedHeroHeadline } from "@/components/site/AnimatedHeroHeadline";
+import { HoneyShader } from "@/components/site/HoneyShader";
+
+const milestones = [
+  ["Customer → Agency", "100 USDC", "approved"],
+  ["Agency → Contractor", "90 USDC", "approved"],
+  ["Contractor → Customer", "80 USDC", "approved"],
+] as const;
+
+const heroPhrases = [
+  "Only the difference moves.",
+  "One final balance settles.",
+  "Less USDC gets locked.",
+] as const;
 
 export function Hero() {
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 50, damping: 20 });
-  const sy = useSpring(my, { stiffness: 50, damping: 20 });
-  const blob1X = useTransform(sx, (v) => v / 24);
-  const blob1Y = useTransform(sy, (v) => v / 24);
-  const blob2X = useTransform(sx, (v) => -v / 28);
-  const blob2Y = useTransform(sy, (v) => -v / 28);
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      mx.set(e.clientX - window.innerWidth / 2);
-      my.set(e.clientY - window.innerHeight / 2);
-    };
-    window.addEventListener("mousemove", fn);
-    return () => window.removeEventListener("mousemove", fn);
-  }, [mx, my]);
+    const frame = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   return (
-    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-36 lg:pb-24">
-      <motion.div
-        style={{ x: blob1X, y: blob1Y }}
-        className="pointer-events-none absolute -left-24 -top-32 h-[520px] w-[520px] rounded-full bg-[#0084FF] opacity-[0.12] blur-[110px]"
-      />
-      <motion.div
-        style={{ x: blob2X, y: blob2Y }}
-        className="pointer-events-none absolute -right-36 top-20 h-[520px] w-[520px] rounded-full bg-cyan-300 opacity-[0.14] blur-[110px]"
-      />
-
-      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 80, damping: 18 }}
-        >
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex -space-x-2">
-              <Avatar i={0} />
-              <Avatar i={1} />
-              <Avatar i={2} />
+    <section className="relative overflow-hidden pb-20 pt-32 sm:pb-28 sm:pt-40">
+      <HoneyShader opacity={0.72} />
+      <div className="pointer-events-none absolute inset-0 cleardeal-grid mix-blend-multiply" aria-hidden="true" />
+      <div className="relative mx-auto grid min-w-0 max-w-[1240px] items-center gap-14 px-5 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:gap-20">
+        <div className={`t-stagger min-w-0 ${shown ? "is-shown" : ""}`}>
+          <div className="t-stagger-line t-stagger-line--1 mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/60 bg-amber-50/80 px-3 py-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-800 shadow-sm backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live on Arc Testnet
             </div>
-            <span className="text-xs font-medium text-slate-500 sm:text-[13px]">
-              Circle agent wallet on Arc Testnet
-            </span>
           </div>
-
-          <h1 className="font-display text-[44px] font-black leading-[1.02] tracking-[-0.035em] text-slate-900 sm:text-[56px] lg:text-[64px]">
-            Agents can pay
-            <br />
-            <span className="text-gradient-brand">for their own tools.</span>
-          </h1>
-
-          <p className="mt-6 max-w-xl text-[16px] leading-relaxed text-slate-500">
-            ArcStream turns Circle agent wallets into budget-aware x402 workflows. Agents discover tools,
-            spend USDC on Arc, verify every receipt, and return a usable report.
+          <AnimatedHeroHeadline
+            lead="Many payments."
+            phrases={heroPhrases}
+            className="t-stagger-line t-stagger-line--1 max-w-[660px] font-display text-[clamp(3.15rem,6.2vw,5.75rem)] font-normal leading-[0.98] tracking-[-0.045em] text-slate-950"
+            phraseClassName="text-amber-700"
+          />
+          <p className="t-stagger-line t-stagger-line--2 mt-7 max-w-[570px] text-[16px] leading-7 text-slate-600 sm:text-[18px] sm:leading-8">
+            Put connected payments in one shared room, approve completed work, and let ClearDeal calculate the smallest final USDC transfers on Arc.
           </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/playground"
-                className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110"
-                style={{
-                  background: "linear-gradient(135deg, #0084FF, #006EE6)",
-                  boxShadow: "0 8px 24px rgba(0,132,255,0.32)",
-                }}
-              >
-                Test the agent <ArrowRight className="h-4 w-4" />
+          <div className="t-stagger-line t-stagger-line--2 mt-9">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/dashboard" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-blue-600 px-6 text-[13px] font-semibold !text-white transition-colors hover:bg-blue-500">
+                Open settlement rooms <ArrowRight className="h-4 w-4" />
               </Link>
-            </motion.div>
-            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="#live-demo"
-                className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white/70"
-              >
-                <ReceiptText className="h-4 w-4 text-[#0084FF]" /> See live receipts
+              <Link href="#how-it-works" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-6 text-[13px] font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-300 hover:text-blue-700">
+                See a simple example <ArrowRight className="h-4 w-4" />
               </Link>
-            </motion.div>
+            </div>
+          </div>
+        </div>
+
+        <div className="honey-card relative min-w-0 overflow-hidden rounded-xl border border-amber-200/70 bg-[#fffcf0]/95 backdrop-blur-sm">
+          <div className="flex h-1"><span className="w-4/5 bg-amber-400" /><span className="w-1/5 bg-emerald-500" /></div>
+          <div className="flex items-start justify-between gap-6 border-b border-slate-200 px-5 py-5 sm:px-7 sm:py-6">
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-slate-400">Settlement room #42</p>
+              <h2 className="mt-2 text-lg font-semibold text-slate-950 sm:text-xl">Agency delivery network</h2>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-slate-500">Payments recorded</p>
+              <strong className="mt-1 block text-xl font-semibold text-slate-950 sm:text-2xl">270 USDC</strong>
+              <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" /> Work approved</span>
+            </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap gap-2">
-            {["Circle Agent Wallet", "x402 Receipts", "Arc Chain ID 5042002", "Budget Policy"].map((t) => (
-              <span key={t} className="glass-pill rounded-xl px-3 py-1.5 text-[12.5px] font-medium text-slate-700">
-                {t}
-              </span>
-            ))}
-          </div>
-        </motion.div>
+          <div className="p-5 sm:p-7">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-400">Approved payments</p>
+            <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60">
+              {milestones.map(([title, amount, status], index) => (
+                <div key={title} className="grid grid-cols-[30px_1fr_auto] items-center gap-3 px-3 py-4 sm:px-4">
+                  <span className="grid h-7 w-7 place-items-center rounded-md bg-emerald-100 font-mono text-[10px] text-emerald-700">{index + 1}</span>
+                  <div><p className="text-[12px] font-medium text-slate-800">{title}</p><p className="mt-1 text-[10px] capitalize text-emerald-700">{status}</p></div>
+                  <span className="font-mono text-[11px] text-slate-700">{amount}</span>
+                </div>
+              ))}
+            </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.1 }}
-          className="relative mx-auto aspect-square w-full max-w-[520px]"
-        >
-          <div className="absolute inset-0 overflow-hidden rounded-[32px] bg-gradient-to-br from-white to-slate-100 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
-            <SplineHeroAgent />
+            <div className="mt-6 flex items-center justify-between text-[11px] font-medium text-slate-500"><span>Final USDC needed</span><span className="text-slate-800">20 USDC</span></div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full w-[7.4%] rounded-full bg-emerald-500" /></div>
+            <Link href="/dashboard?cycle=0" className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-[13px] font-semibold !text-white transition-colors hover:bg-blue-500"><Network className="h-4 w-4" /> View completed example</Link>
           </div>
 
-          <FloatingBadge
-            className="-top-2 -right-4 sm:-right-8"
-            delay={0}
-            duration={3}
-            color="bg-[#0084FF]"
-            icon={<Sparkles className="h-4 w-4 text-white" />}
-            title="Competitor Analyzer"
-            sub="$0.05 USDC via x402"
-          />
-          <FloatingBadge
-            className="bottom-10 -left-4 sm:-left-10"
-            delay={0.5}
-            duration={4}
-            color="bg-emerald-500"
-            icon={<Globe2 className="h-4 w-4 text-white" />}
-            title="Web Intelligence"
-            sub="$0.03 USDC fetched"
-          />
-          <FloatingBadge
-            className="-bottom-3 right-2 sm:right-6"
-            delay={1}
-            duration={3.5}
-            color="bg-cyan-600"
-            icon={<ShieldCheck className="h-4 w-4 text-white" />}
-            title="Budget enforced"
-            sub="Receipts verified on Arc"
-          />
-        </motion.div>
+          <div className="grid min-w-0 grid-cols-3 gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 font-mono text-[8px] uppercase leading-4 tracking-[0.1em] text-slate-500 sm:px-7 sm:text-[9px] sm:tracking-[0.12em]">
+            <span>Arc Testnet</span><span className="text-center">250 USDC movement avoided</span><span className="text-right text-emerald-700">Complete</span>
+          </div>
+        </div>
       </div>
     </section>
-  );
-}
-
-function FloatingBadge({
-  className,
-  delay,
-  duration,
-  color,
-  icon,
-  title,
-  sub,
-}: {
-  className: string;
-  delay: number;
-  duration: number;
-  color: string;
-  icon: ReactNode;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: [0, -6, 0] }}
-      transition={{
-        opacity: { duration: 0.6, delay },
-        y: { duration, delay, repeat: Infinity, ease: "easeInOut" },
-      }}
-      className={`absolute glass-card flex min-w-[200px] items-center gap-2.5 rounded-2xl px-3 py-2.5 ${className}`}
-    >
-      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${color} shadow-sm`}>
-        {icon}
-      </span>
-      <div className="leading-tight">
-        <div className="text-[12.5px] font-semibold text-slate-900">{title}</div>
-        <div className="text-[11px] text-slate-500">{sub}</div>
-      </div>
-    </motion.div>
   );
 }

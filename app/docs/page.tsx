@@ -1,243 +1,258 @@
+import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
+import { AnimatedHeroHeadline } from "@/components/site/AnimatedHeroHeadline";
+import { Footer } from "@/components/site/Footer";
+import { clearingHouseAddress } from "@/lib/clearing-contract";
 
-const catalogSnippet = `// Step 1 — Discover available AI tools
-const res = await fetch('https://arcstream.app/api/catalog');
-const { tools } = await res.json();
-// → 5 live tools: summarize, analyze, web-intel, sentiment, report-writer
+const lifecycle = [
+  [
+    "Active",
+    "Providers post USDC bonds, publish wallet-signed evidence, and independent verifiers vote on each obligation.",
+  ],
+  [
+    "Passed / Failed",
+    "Quorum or the independent arbitrator finalizes each outcome. Failed posted bonds are marked for slashing.",
+  ],
+  [
+    "Funding",
+    "The contract computes participant net positions. Only net debtors deposit the exact required USDC difference.",
+  ],
+  [
+    "Settled",
+    "One transaction pays net creditors, returns passed bonds, slashes failed bonds, and updates risk passports.",
+  ],
+  [
+    "Defaulted",
+    "After the funding deadline, deposits are returned and unfunded net debtors receive an onchain default record.",
+  ],
+] as const;
 
-// Step 2 — Call a tool (no auth header → 402 Payment Required)
-const call = await fetch('https://arcstream.app/api/tools/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ company: 'Stripe', focus: 'product' })
-});
-// → HTTP 402: { price: "0.05", providerWallet: "0x211F...", instructions: "..." }
-const { price, providerWallet } = await call.json();
-
-// Step 3 — Pay USDC on Arc Testnet (Chain ID 5042002)
-const txHash = await sendUSDC(providerWallet, price); // your wallet lib
-
-// Step 4 — Retry with payment proof
-const unlocked = await fetch('https://arcstream.app/api/tools/analyze', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'x-arcstream-payment-tx': txHash,
-  },
-  body: JSON.stringify({ company: 'Stripe', focus: 'product' })
-});
-const { payload } = await unlocked.json();`;
-
-const responseSnippet = `{
-  "toolId": "analyze",
-  "provider": "ArcStream Labs",
-  "receipt": "x402-onchain-0x8f3a...2c",
-  "dataHash": "0xabc123...",
-  "settlement": "settled_onchain",
-  "payload": {
-    "company": "Stripe",
-    "strengths": [
-      "Dominant API-first payments brand",
-      "Atlas startup ecosystem lock-in"
-    ],
-    "weaknesses": ["High fees vs incumbents"],
-    "positioning": "Stripe owns the developer-first ...",
-    "threats": ["Adyen enterprise push"],
-    "opportunities": ["Stablecoin payment rails"],
-    "analyzedAt": 1719500000000
-  }
-}`;
-
-const tools = [
-  { id: "summarize",      name: "Text Summarizer",      price: "$0.02", ms: "~1.2s", category: "Writing" },
-  { id: "analyze",        name: "Competitor Analyzer",  price: "$0.05", ms: "~2.5s", category: "Analysis" },
-  { id: "web-intel",      name: "Web Intelligence",     price: "$0.03", ms: "~3.0s", category: "Research" },
-  { id: "sentiment",      name: "Sentiment Scorer",     price: "$0.02", ms: "~0.9s", category: "Analysis" },
-  { id: "report-writer",  name: "Report Writer",        price: "$0.04", ms: "~2.0s", category: "Generation" },
-];
+const heroPhrases = [
+  "autonomous commerce.",
+  "multi-party settlement.",
+  "verifiable USDC outcomes.",
+] as const;
 
 export default function DocsPage() {
+  const contractUrl = clearingHouseAddress
+    ? `https://testnet.arcscan.app/address/${clearingHouseAddress}#code`
+    : "https://testnet.arcscan.app";
   return (
-    <main className="min-h-screen bg-[#f9fafb]">
+    <main className="cleardeal min-h-screen bg-[#05090d] text-white">
       <AppNav />
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-28 pb-20">
-
-        {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 border border-violet-100 px-3.5 py-1.5 mb-6">
-          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-          <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-violet-600">
-            Developer Guide
-          </span>
-        </div>
-
-        <h1
-          className="font-display text-4xl sm:text-5xl lg:text-[52px] font-extrabold tracking-[-0.025em] leading-[1.08] text-[#18181B] max-w-3xl"
-          style={{ fontFamily: "var(--font-display, Outfit, sans-serif)" }}
-        >
-          Build agents that{" "}
-          <span
-            style={{
-              background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            pay per tool call
-          </span>
-        </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-[#71717A] max-w-2xl">
-          No SDK needed. ArcStream uses standard HTTP 402 — your agent calls a tool endpoint, gets a price, pays USDC on Arc Testnet, and retries with the transaction hash.
-        </p>
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1.55fr_1fr]">
-          {/* Code terminal */}
-          <div className="bg-[#0d1117] rounded-[2rem] overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)]">
-            <div className="flex items-center justify-between border-b border-white/[0.07] bg-white/[0.03] px-5 py-3.5">
-              <div className="flex gap-1.5">
-                <div className="h-3 w-3 rounded-full bg-red-500/70" />
-                <div className="h-3 w-3 rounded-full bg-yellow-500/70" />
-                <div className="h-3 w-3 rounded-full bg-green-500/70" />
-              </div>
-              <div className="text-[11.5px] font-mono text-white/30">agent.ts</div>
-            </div>
-            <pre className="overflow-x-auto p-6 text-[12.5px] font-mono leading-[1.85] text-slate-300">
-              <code>{catalogSnippet}</code>
-            </pre>
-          </div>
-
-          {/* Right column */}
-          <div className="flex flex-col gap-5">
-
-            {/* Response payload */}
-            <div className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.7)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 mb-4">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-emerald-600">
-                  Unlocked response
-                </span>
-              </div>
-              <pre className="text-[11.5px] font-mono text-emerald-900 bg-emerald-50/80 p-4 rounded-2xl border border-emerald-100 leading-[1.7] overflow-x-auto">
-                {responseSnippet}
-              </pre>
-            </div>
-
-            {/* Protocol card */}
-            <div className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.7)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] p-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-100 px-3 py-1 mb-4">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#0084FF]" />
-                <span className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-[#0084FF]">
-                  x402 Protocol
-                </span>
-              </div>
-              <ol className="space-y-3">
-                {[
-                  ["POST /api/tools/:id", "No header → HTTP 402 + price"],
-                  ["sendUSDC(wallet, price)", "Transfer USDC on Arc Testnet"],
-                  ["Retry with x-arcstream-payment-tx", "Server verifies on-chain"],
-                  ["200 OK + payload", "Settlement proof in response"],
-                ].map(([code, desc]) => (
-                  <li key={code} className="flex flex-col gap-0.5">
-                    <code className="text-[11.5px] font-mono text-violet-600">{code}</code>
-                    <span className="text-[12px] text-[#71717A]">{desc}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Tool catalog table */}
-        <div className="mt-10 bg-white rounded-[2rem] border border-[rgba(226,232,240,0.7)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] p-7 overflow-x-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 mb-1">Live Tools</p>
-              <h2
-                className="text-xl font-extrabold text-[#18181B]"
-                style={{ fontFamily: "var(--font-display, Outfit, sans-serif)" }}
-              >
-                5 native tools — all powered by Gemini AI
-              </h2>
-            </div>
-            <code className="hidden sm:block text-[11px] font-mono bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-slate-500">
-              GET /api/catalog
-            </code>
-          </div>
-          <table className="w-full text-[13px] min-w-[520px]">
-            <thead>
-              <tr className="text-left border-b border-slate-100">
-                <th className="pb-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">Tool</th>
-                <th className="pb-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">Endpoint</th>
-                <th className="pb-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 text-right">Price</th>
-                <th className="pb-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 text-right">Latency</th>
-                <th className="pb-3 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">Category</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {tools.map((t) => (
-                <tr key={t.id} className="group">
-                  <td className="py-3 font-semibold text-[#18181B]">{t.name}</td>
-                  <td className="py-3 font-mono text-[11.5px] text-[#71717A] group-hover:text-violet-600 transition-colors">
-                    POST /api/tools/{t.id}
-                  </td>
-                  <td className="py-3 text-right font-semibold text-emerald-600">{t.price}</td>
-                  <td className="py-3 text-right text-slate-400">{t.ms}</td>
-                  <td className="py-3">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600 font-medium">
-                      {t.category}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Bottom row */}
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {/* Payment header */}
-          <div className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.7)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] p-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-100 px-3 py-1 mb-4">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              <span className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-amber-600">
-                Payment header
-              </span>
-            </div>
-            <code className="block rounded-xl bg-slate-950 text-emerald-400 font-mono text-[12.5px] p-4 border border-slate-800 leading-7">
-              x-arcstream-payment-tx: 0x8f3a...2c
-            </code>
-            <p className="mt-3 text-[13px] text-[#71717A] leading-relaxed">
-              One header. Send a verified Arc Testnet USDC transaction hash and the tool unlocks instantly.
+      <div className="mx-auto grid max-w-[1240px] gap-12 px-5 pb-24 pt-32 sm:px-8 lg:grid-cols-[220px_1fr]">
+        <aside className="h-fit border-l border-white/[0.1] pl-5 lg:sticky lg:top-28">
+          <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-white/28">
+            Documentation
+          </p>
+          <nav className="mt-5 grid gap-3 text-[12px] text-white/48">
+            <a href="#overview">Overview</a>
+            <a href="#lifecycle">State machine</a>
+            <a href="#architecture">Data boundaries</a>
+            <a href="#evidence">Evidence bundles</a>
+            <a href="#arc">Arc integration</a>
+            <a href="#status">Release status</a>
+          </nav>
+        </aside>
+        <article className="min-w-0">
+          <section id="overview" className="border-b border-white/[0.09] pb-12">
+            <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-blue-400">
+              ClearDeal protocol
             </p>
-          </div>
-
-          {/* Network info */}
-          <div className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.7)] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] p-6">
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-100 px-3 py-1 mb-4">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-              <span className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-slate-500">
-                Network
-              </span>
-            </div>
-            <ul className="space-y-3">
-              {[
-                "Arc Testnet — Chain ID 5042002",
-                "USDC as payment currency",
-                "On-chain settlement proof per call",
-                "10% platform fee → ArcStream protocol",
-                "Verify payments on ArcScan",
-              ].map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-[13.5px] text-[#18181B]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#0084FF] shrink-0" />
-                  {f}
-                </li>
+            <AnimatedHeroHeadline
+              lead="Clearing and assurance for"
+              phrases={heroPhrases}
+              className="mt-5 text-5xl font-semibold leading-[.98] tracking-[-0.055em] sm:text-6xl"
+              phraseClassName="text-amber-300"
+            />
+            <p className="mt-6 max-w-3xl text-[15px] leading-7 text-white/45">
+              ClearDeal converts outcome commitments into verifier-cleared
+              obligations, calculates multilateral net positions, and settles
+              the minimum required USDC on Arc Testnet.
+            </p>
+          </section>
+          <DocSection
+            id="lifecycle"
+            eyebrow="State machine"
+            title="Cycle lifecycle"
+          >
+            <div className="divide-y divide-white/[0.08] border-y border-white/[0.09]">
+              {lifecycle.map(([state, description]) => (
+                <div
+                  key={state}
+                  className="grid gap-2 py-5 sm:grid-cols-[140px_1fr]"
+                >
+                  <code className="font-mono text-[11px] text-blue-300">
+                    {state}
+                  </code>
+                  <p className="text-[13px] leading-6 text-white/42">
+                    {description}
+                  </p>
+                </div>
               ))}
-            </ul>
-          </div>
-        </div>
-
+            </div>
+          </DocSection>
+          <DocSection
+            id="architecture"
+            eyebrow="Data boundaries"
+            title="What is verifiable"
+          >
+            <div className="grid gap-px border border-white/[0.09] bg-white/[0.08] md:grid-cols-2">
+              <Architecture
+                title="Onchain"
+                items={[
+                  "Participants, verifiers, and arbitrator",
+                  "Payment and performance-bond amounts",
+                  "Evidence/spec hashes and verifier votes",
+                  "Net debit/credit positions and deposits",
+                  "Settlements, defaults, and risk passports",
+                ]}
+              />
+              <Architecture
+                title="Wallet-signed public records"
+                items={[
+                  "Cycle and participant display labels",
+                  "Human-readable outcome specifications",
+                  "Public evidence references",
+                  "Signer address, signature, and timestamp",
+                  "Arc Privacy remains roadmap—not a live claim",
+                ]}
+              />
+            </div>
+          </DocSection>
+          <DocSection
+            id="evidence"
+            eyebrow="Evidence bundles"
+            title="A result can carry a real receipt."
+          >
+            <p className="text-[13px] leading-7 text-white/44">
+              Providers sign a delivery note and can attach up to two small
+              PDF, PNG, JPEG, or text files. ClearDeal hashes each file in the
+              browser, stores the public attachment offchain, and anchors the
+              signed descriptor hash to the obligation on Arc. Reviewers can
+              open the evidence receipt from the room before voting.
+            </p>
+            <div className="mt-6 grid gap-px border border-white/[0.09] bg-white/[0.08] sm:grid-cols-3">
+              <Fact label="Attachment limit" value="2 files / 400 KB total" />
+              <Fact label="Integrity" value="SHA-256 + wallet signature" />
+              <Fact label="Visibility" value="Public Testnet record" />
+            </div>
+          </DocSection>
+          <DocSection id="arc" eyebrow="Infrastructure" title="Why Arc">
+            <p className="text-[13px] leading-7 text-white/44">
+              Arc uses USDC as the native gas currency and supports EVM
+              contracts. ClearDeal uses canonical 6-decimal USDC for bonds and
+              settlement, while fast deterministic finality makes a multi-party
+              clearing state machine practical.
+            </p>
+            <dl className="mt-6 grid gap-px border border-white/[0.09] bg-white/[0.08] sm:grid-cols-2">
+              <Fact label="Network" value="Arc Testnet" />
+              <Fact label="Chain ID" value="5042002" />
+              <Fact label="Settlement asset" value="Canonical USDC" />
+              <Fact label="Privacy" value="Roadmap only" />
+            </dl>
+          </DocSection>
+          <DocSection
+            id="status"
+            eyebrow="Release status"
+            title="Public Testnet product"
+          >
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 shadow-[0_12px_32px_rgba(146,64,14,0.07)]">
+              <div className="flex gap-4">
+                <AlertTriangle
+                  className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"
+                  aria-hidden="true"
+                />
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-950">
+                    Testnet safety notice
+                  </h3>
+                  <p className="mt-2 text-[13px] leading-7 text-amber-900">
+                    The product performs real Arc Testnet contract reads/writes,
+                    wallet signatures, USDC approvals, bond posting, quorum
+                    voting, net funding, settlement, defaults, and durable
+                    evidence storage. Faucet USDC has no real-world value. The
+                    custom contracts are not professionally audited.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/dashboard"
+                className="bg-blue-600 px-5 py-3 text-[12px] font-semibold"
+              >
+                Open workspace
+              </Link>
+              <a
+                href={contractUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="border border-white/[0.12] px-5 py-3 text-[12px] font-semibold text-white/65"
+              >
+                ClearingHouse on ArcScan
+              </a>
+            </div>
+          </DocSection>
+        </article>
       </div>
+      <Footer />
     </main>
+  );
+}
+
+function DocSection({
+  id,
+  eyebrow,
+  title,
+  children,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      className="scroll-mt-28 border-b border-white/[0.09] py-12 last:border-0"
+    >
+      <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-blue-400">
+        {eyebrow}
+      </p>
+      <h2 className="mb-7 mt-3 text-2xl font-semibold tracking-[-0.035em]">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+function Architecture({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="bg-[#080d13] p-6">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <ul className="mt-5 space-y-3">
+        {items.map((item) => (
+          <li
+            key={item}
+            className="flex gap-3 text-[12px] leading-5 text-white/40"
+          >
+            <span className="text-blue-400">—</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-[#080d13] p-5">
+      <dt className="font-mono text-[8px] uppercase tracking-[0.14em] text-white/25">
+        {label}
+      </dt>
+      <dd className="mt-2 font-mono text-[11px] text-white/66">{value}</dd>
+    </div>
   );
 }

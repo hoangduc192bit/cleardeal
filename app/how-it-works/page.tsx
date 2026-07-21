@@ -1,127 +1,24 @@
 import Link from "next/link";
-
 import { AppNav } from "@/components/AppNav";
-import { StatusLegend } from "@/components/StatusLegend";
+import { AnimatedHeroHeadline } from "@/components/site/AnimatedHeroHeadline";
+import { Footer } from "@/components/site/Footer";
 
-const streaming = [
-  ["Deposit", "The consumer approves and deposits Arc Testnet USDC into StreamPayment."],
-  ["Unlock", "Pulse Price Feed becomes available while the subscription is active."],
-  ["Accrue", "The provider earns 0.0001 USDC for every second consumed."],
-  ["Stop", "The user manually confirms Stop Stream in their wallet."],
-  ["Settle", "The contract pays the provider and refunds unused USDC to the user."],
-  ["Prove", "The final transaction is linked on ArcScan."],
-];
+const steps = [
+  ["01", "Commit the obligation graph", "A participant creates a cycle with economic wallets, independent verifiers, an arbitrator, outcome specifications, payment amounts, and performance bonds."],
+  ["02", "Providers post assurance", "Each provider approves and posts its USDC performance bond before submitting a wallet-signed public evidence reference."],
+  ["03", "Independent wallets verify", "Verifier wallets vote pass or fail. The configured quorum finalizes normal outcomes; the arbitrator can break a deadlock."],
+  ["04", "Clear the graph", "Passed obligations become signed debit and credit positions. Failed obligations are removed and posted bonds are slashed to their payer."],
+  ["05", "Settle only the net", "Net debtors fund the calculated difference. One settlement transaction pays all net creditors, returns successful bonds, and updates risk passports."],
+] as const;
 
-const x402 = [
-  ["Request", "The Consumer Agent calls GET /api/x402/pulse-price."],
-  ["402", "The API responds with HTTP 402 Payment Required and a price."],
-  ["Authorize", "The user authorizes a real USDC payment via MetaMask on Arc Testnet."],
-  ["Verify", "The server checks the on-chain transaction receipt via RPC."],
-  ["Unlock", "Price data, timestamp, data hash, and real receipt are returned."],
-];
+const heroPhrases = [
+  "cleared USDC obligations.",
+  "verified commercial outcomes.",
+  "minimum final settlement.",
+] as const;
 
 export default function HowItWorksPage() {
-  return (
-    <main className="min-h-screen bg-[#f9fafb]">
-      <AppNav />
-      <section className="mx-auto max-w-7xl px-5 sm:px-8 pt-28 pb-20">
-        <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 border border-violet-100 px-3.5 py-1.5 mb-6">
-          <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-          <span className="text-[11px] font-semibold tracking-[0.12em] uppercase text-violet-600">
-            How it works
-          </span>
-        </div>
-        <h1
-          className="font-display text-4xl sm:text-5xl font-extrabold tracking-[-0.025em] leading-[1.08] text-[#18181B] max-w-4xl"
-          style={{ fontFamily: "var(--font-display, Outfit, sans-serif)" }}
-        >
-          Two simple ways for an agent to{" "}
-          <span
-            style={{
-              background: "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            buy data
-          </span>
-        </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-[#71717A] max-w-3xl">
-          ArcStream combines a real time-based streaming payment with a fully on-chain x402 pay-per-call flow.
-        </p>
-
-        <div className="mt-10"><StatusLegend /></div>
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
-          <Flow title="A. Streaming subscription" badge="Real on Arc Testnet" steps={streaming} />
-          <Flow title="B. x402 pay-per-call" badge="Real on Arc Testnet" steps={x402} />
-        </div>
-
-        <section className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.65)] shadow-[0_8px_30px_-8px_rgba(0,0,0,0.05)] mt-8 p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 mb-6">Contract and network</p>
-          <dl className="grid gap-6 text-sm md:grid-cols-2">
-            <Detail label="Network" value="Arc Testnet · Chain ID 5042002" />
-            <Detail label="Currency" value="Arc Testnet USDC" />
-            <Detail label="StreamPayment" value="0x685D00B7821416F99B21aF31c80D3d3856e072d9" />
-            <Detail label="USDC" value="0x3600000000000000000000000000000000000000" />
-          </dl>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-[#0084FF] text-white text-sm font-semibold hover:brightness-110 transition"
-              href="/marketplace"
-            >
-              Explore Marketplace →
-            </Link>
-            <a
-              className="inline-flex items-center justify-center px-5 py-3 rounded-2xl border border-[rgba(226,232,240,0.8)] text-sm font-semibold text-[#18181B] hover:border-[#0084FF]/30 hover:text-[#0084FF] transition"
-              href="https://testnet.arcscan.app/address/0x685D00B7821416F99B21aF31c80D3d3856e072d9"
-              target="_blank"
-            >
-              Open ArcScan
-            </a>
-          </div>
-        </section>
-      </section>
-    </main>
-  );
+  return <main className="cleardeal min-h-screen bg-[#05090d] text-white"><AppNav /><section className="mx-auto max-w-[1240px] px-5 pb-24 pt-32 sm:px-8"><header className="grid gap-8 border-b border-white/[0.09] pb-12 lg:grid-cols-[1.2fr_.8fr] lg:items-end"><div><p className="font-mono text-[9px] uppercase tracking-[0.18em] text-blue-400">How it works</p><AnimatedHeroHeadline lead="From agent promises to" phrases={heroPhrases} className="mt-5 max-w-4xl text-5xl font-semibold leading-[.98] tracking-[-0.055em] sm:text-6xl" phraseClassName="text-amber-300" /></div><p className="max-w-lg text-[15px] leading-7 text-white/45">ClearDeal separates authorization, verification, clearing, and settlement so a raw payment is never mistaken for a valid commercial outcome.</p></header><div className="mt-14 border-y border-white/[0.09]">{steps.map(([number,title,description]) => <article key={number} className="grid gap-5 border-b border-white/[0.08] py-7 last:border-0 md:grid-cols-[70px_260px_1fr] md:items-start"><span className="font-mono text-[10px] text-blue-400">{number}</span><h2 className="text-lg font-semibold tracking-[-0.025em]">{title}</h2><p className="max-w-2xl text-[13px] leading-6 text-white/42">{description}</p></article>)}</div><section className="mt-16 grid gap-px overflow-hidden border border-white/[0.09] bg-white/[0.08] md:grid-cols-3"><Principle title="Fail-closed outcomes" text="Missing bonds, evidence, or quorum cannot create a payable obligation." /><Principle title="Capital efficiency" text="A circular 270 USDC graph can require only 20 USDC of final settlement liquidity." /><Principle title="Accountable risk" text="Passed outcomes, slashed bonds, funded cycles, and settlement defaults update an onchain passport." /></section><section className="mt-16 flex flex-col justify-between gap-6 border border-blue-400/20 bg-blue-500/[0.07] p-7 md:flex-row md:items-center"><div><h2 className="text-xl font-semibold">Run a complete clearing cycle.</h2><p className="mt-2 text-[13px] text-white/42">Use separate Arc Testnet wallets for participants, verifiers, and arbitrator. Faucet USDC has no real-world value.</p></div><div className="flex flex-wrap gap-3"><Link href="/dashboard" className="bg-blue-600 px-5 py-3 text-[12px] font-semibold hover:bg-blue-500">Open clearing</Link><Link href="/docs" className="border border-white/[0.12] px-5 py-3 text-[12px] font-semibold text-white/65">Protocol docs</Link></div></section></section><Footer /></main>;
 }
 
-function Flow({ title, badge, steps }: { title: string; badge: string; steps: string[][] }) {
-  return (
-    <section className="bg-white rounded-[2rem] border border-[rgba(226,232,240,0.65)] shadow-[0_8px_30px_-8px_rgba(0,0,0,0.05)] p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h2
-          className="font-display text-xl font-extrabold tracking-tight text-[#18181B]"
-          style={{ fontFamily: "var(--font-display, Outfit, sans-serif)" }}
-        >
-          {title}
-        </h2>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {badge}
-        </span>
-      </div>
-      <ol className="space-y-1">
-        {steps.map(([stepTitle, text], index) => (
-          <li className="grid grid-cols-[2rem_1fr] gap-3 py-3.5 border-t border-slate-100 first:border-t-0" key={stepTitle}>
-            <span className="font-mono text-[12px] font-semibold text-[#0084FF]">0{index + 1}</span>
-            <div>
-              <h3 className="text-[14px] font-bold text-[#18181B]">{stepTitle}</h3>
-              <p className="mt-1 text-[13px] text-[#71717A] leading-relaxed">{text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">{label}</dt>
-      <dd className="break-all font-mono text-[12.5px] text-[#18181B]">{value}</dd>
-    </div>
-  );
-}
+function Principle({ title, text }: { title: string; text: string }) { return <article className="bg-[#080d13] p-6"><h3 className="text-sm font-semibold">{title}</h3><p className="mt-3 text-[12px] leading-6 text-white/38">{text}</p></article>; }

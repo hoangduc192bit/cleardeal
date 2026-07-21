@@ -1,5 +1,5 @@
 {
-  "name": "arcstream",
+  "name": "cleardeal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,33 +9,23 @@
     "lint": "eslint",
     "compile:contracts": "hardhat compile",
     "test:contracts": "hardhat test",
-    "circle": "circle",
-    "circle:terms": "circle terms show",
-    "circle:chains": "circle blockchain list",
-    "circle:services": "circle services search",
-    "circle:wallets": "circle wallet list"
+    "test:contracts:coverage": "hardhat coverage",
+    "audit:dependencies": "npm audit --omit=dev",
+    "qa:cleardeal": "node scripts/qa-cleardeal.mjs",
+    "e2e:clearing:testnet": "hardhat run scripts/e2e-clearing-testnet.ts --network arcTestnet",
+    "deploy:cleardeal:testnet": "hardhat run scripts/deploy-cleardeal.ts --network arcTestnet",
+    "deploy:clearing:testnet": "hardhat run scripts/deploy-clearing.ts --network arcTestnet"
   },
   "dependencies": {
-    "@circle-fin/cli": "^0.0.6",
-    "@circle-fin/developer-controlled-wallets": "^10.8.0",
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/outfit": "^5.2.8",
-    "@google/generative-ai": "^0.24.1",
-    "@gsap/react": "^2.1.2",
     "@openzeppelin/contracts": "^5.4.0",
     "@tanstack/react-query": "^5.90.21",
-    "@x402/core": "^2.17.0",
-    "@x402/evm": "^2.17.0",
-    "buffer-from": "^1.1.2",
+    "@walletconnect/ethereum-provider": "^2.23.10",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.40.0",
-    "gsap": "^3.15.0",
     "lucide-react": "^1.17.0",
     "next": "^16.2.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.8.1",
-    "three": "^0.184.0",
     "viem": "^2.52.2",
     "wagmi": "^3.6.16"
   },
@@ -71,6 +61,9 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
+    "@coinbase/cdp-sdk": {
+      "axios": "1.18.1"
+    },
     "postcss": "8.5.10",
     "uuid": "11.1.1",
     "ws": "8.21.0"

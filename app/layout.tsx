@@ -1,27 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Outfit, Inter, Fustat } from "next/font/google";
+import { Albert_Sans, DM_Serif_Display } from "next/font/google";
 
 import { Providers } from "@/app/providers";
+import clearDealLogo from "../logo.png";
 
-const outfit = Outfit({
+const albertSans = Albert_Sans({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-albert-sans",
   weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
 });
 
-const inter = Inter({
+const dmSerif = DM_Serif_Display({
   subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const fustat = Fustat({
-  subsets: ["latin"],
-  variable: "--font-fustat",
-  weight: ["500", "600", "700", "800"],
+  variable: "--font-dm-serif",
+  weight: "400",
   display: "swap",
 });
 
@@ -33,9 +27,9 @@ const appUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "ArcStream | Agent Wallet x402 Workflows on Arc",
+  title: "ClearDeal | Shared USDC Settlement on Arc",
   description:
-    "AI agents discover paid tools, spend from a Circle agent wallet, and verify x402 USDC receipts on Arc.",
+    "Record connected payments, approve completed work, and settle only the final USDC difference on Arc Testnet.",
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
@@ -45,16 +39,16 @@ export const metadata: Metadata = {
     shortcut: "/favicon.png",
   },
   openGraph: {
-    title: "ArcStream | Agent Wallet x402 Workflows on Arc",
-    description: "AI agents discover paid tools, spend from a Circle agent wallet, and verify x402 USDC receipts on Arc.",
-    images: [{ url: "/logo.png", width: 1024, height: 1024, alt: "ArcStream Logo" }],
+    title: "ClearDeal | Shared USDC Settlement on Arc",
+    description: "Many connected payments enter. Only the final USDC difference moves on Arc Testnet.",
+    images: [{ url: clearDealLogo.src, width: 577, height: 433, alt: "ClearDeal" }],
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "ArcStream",
-    description: "Agent wallet payments and x402 receipts on Arc Testnet.",
-    images: ["/logo.png"],
+    title: "ClearDeal",
+    description: "Record connected payments and settle only the final USDC difference on Arc Testnet.",
+    images: [clearDealLogo.src],
   },
 };
 
@@ -64,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${inter.variable} ${fustat.variable}`}>
+    <html lang="en" className={`${albertSans.variable} ${dmSerif.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

@@ -1,8 +1,11 @@
 /node_modules
 /.next
 /artifacts
+/hardhat-artifacts
+/hardhat-cache
 /cache
 /coverage
+/coverage.json
 /typechain-types
 /.tmp
 /.npmrc
@@ -29,3 +32,9 @@ arcstream-source.zip
 *.zip
 
 .vercel
+
+# Local design explorations and generated submission artifacts
+/Nexus-*.png
+/Nexus-*.md
+/outputs
+/public/images/bionic_capsule_robot.png

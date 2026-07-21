@@ -8,10 +8,20 @@ const accounts = process.env.DEPLOYER_PRIVATE_KEY
   : [];
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: { enabled: true, runs: 200 },
+      viaIR: true,
+    },
+  },
+  paths: {
+    artifacts: "hardhat-artifacts",
+    cache: "hardhat-cache",
+  },
   networks: {
     arcTestnet: {
-      url: "https://rpc.testnet.arc.network",
+      url: process.env.ARC_TESTNET_RPC_URL || "https://rpc.testnet.arc.network",
       accounts,
       chainId: 5_042_002,
     },

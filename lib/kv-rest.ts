@@ -19,6 +19,7 @@ export async function redisCommand<T>(command: (string | number)[]): Promise<T |
     },
     body: JSON.stringify(command),
     cache: "no-store",
+    signal: AbortSignal.timeout(5_000),
   });
 
   if (!response.ok) {

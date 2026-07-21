@@ -18,7 +18,10 @@ function clientIp(request: Request) {
 
 export async function rateLimit(request: Request, options: RateLimitOptions) {
   const ip = clientIp(request);
-  const bucketKey = `arcstream:rate:${options.key}:${ip}`;
+  return incrementBucket(`cleardeal:rate:${options.key}:${ip}`, options);
+}
+
+async function incrementBucket(bucketKey: string, options: RateLimitOptions) {
 
   if (isDurableKvConfigured) {
     const count = Number((await redisCommand<number>(["INCR", bucketKey])) ?? 0);
@@ -27,8 +30,12 @@ export async function rateLimit(request: Request, options: RateLimitOptions) {
     }
     if (count > options.limit) {
       return Response.json(
-        { error: "rate_limited", retryAfterSeconds: options.windowSeconds },
-        { status: 429 },
+        {
+          error: "rate_limited",
+          message: "Too many requests. Please try again later.",
+          retryAfterSeconds: options.windowSeconds,
+        },
+        { status: 429, headers: { "Retry-After": String(options.windowSeconds) } },
       );
     }
     return null;
@@ -54,8 +61,15 @@ export async function rateLimit(request: Request, options: RateLimitOptions) {
   existing.count += 1;
   if (existing.count > options.limit) {
     return Response.json(
-      { error: "rate_limited", retryAfterSeconds: Math.ceil((existing.resetAt - now) / 1000) },
-      { status: 429 },
+      {
+        error: "rate_limited",
+        message: "Too many requests. Please try again later.",
+        retryAfterSeconds: Math.ceil((existing.resetAt - now) / 1000),
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((existing.resetAt - now) / 1000)) },
+      },
     );
   }
 

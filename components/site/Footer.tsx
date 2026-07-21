@@ -1,37 +1,39 @@
 import Link from "next/link";
-import { Bot } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/marketplace", label: "Tools" },
-  { href: "/playground", label: "Playground" },
-  { href: "/docs", label: "Docs" },
-];
+import { ClearDealBrand } from "@/components/cleardeal/ClearDealBrand";
+
+const groups = [
+  { title: "Product", links: [["Overview", "/#product"], ["How it works", "/#how-it-works"], ["Assurance", "/#security"], ["Clearing workspace", "/dashboard"]] },
+  { title: "Resources", links: [["Documentation", "/docs"], ["Arc Testnet", "https://testnet.arcscan.app"], ["Circle Faucet", "https://faucet.circle.com"], ["Network status", "/arcscan"]] },
+] as const;
 
 export function Footer() {
   return (
-    <footer className="relative border-t border-slate-200/70 py-12">
-      <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 md:grid-cols-3">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0084FF] shadow-brand">
-            <Bot className="h-5 w-5 text-white" />
-          </span>
-          <div>
-            <div className="font-display font-extrabold text-slate-900">ArcStream</div>
-            <div className="text-[12.5px] text-slate-500">Agent wallet workflows on Arc Testnet</div>
+    <footer className="border-t border-slate-200 bg-white">
+      <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-14 sm:px-8 md:grid-cols-[1.2fr_.8fr_.8fr_1fr]">
+        <div>
+          <ClearDealBrand />
+          <p className="mt-5 max-w-[250px] text-[13px] leading-6 text-slate-500">Shared USDC settlement for connected businesses, people, and agents.</p>
+        </div>
+        {groups.map((group) => (
+          <div key={group.title}>
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-400">{group.title}</p>
+            <div className="mt-5 grid gap-3">
+              {group.links.map(([label, href]) => href.startsWith("http") ? <a key={label} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-blue-700">{label}<ExternalLink className="h-3 w-3" /></a> : <Link key={label} href={href} className="text-[12px] text-slate-500 hover:text-blue-700">{label}</Link>)}
+            </div>
           </div>
+        ))}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-400">Arc Testnet status</p>
+          <p className="mt-4 flex items-center gap-2 text-[12px] font-medium text-slate-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Public testnet</p>
+          <a href="https://testnet.arcscan.app" target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-2 text-[12px] text-blue-400 hover:text-blue-300">Open ArcScan <ExternalLink className="h-3.5 w-3.5" /></a>
         </div>
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-          {links.map((l) => (
-            <Link key={l.href} href={l.href} className="text-[13px] font-medium text-slate-600 transition hover:text-[#0084FF]">
-              {l.label}
-            </Link>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-3 md:justify-end">
-          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-500">Chain ID: 5042002</span>
-          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-500">x402 Protocol</span>
-          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[12px] font-medium text-slate-500">Circle Wallet</span>
+      </div>
+      <div className="border-t border-slate-200">
+        <div className="mx-auto flex max-w-[1240px] flex-col gap-3 px-5 py-5 text-[10px] leading-5 text-slate-400 sm:px-8 md:flex-row md:items-center md:justify-between">
+          <p>ClearDeal is an independent product built on Arc. Arc Testnet USDC has no real-world value.</p>
+          <p>© 2026 ClearDeal. All rights reserved.</p>
         </div>
       </div>
     </footer>

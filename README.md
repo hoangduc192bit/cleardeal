@@ -1,173 +1,106 @@
-# ArcStream
+# ClearDeal
 
-**ArcStream is an autonomous agent orchestration and budget-governance layer on Arc.** AI agents can discover paid tools, compose multi-step research workflows, and consume financial data streams using USDC payments.
+ClearDeal is a clearing and assurance network for autonomous commerce. Participants commit machine-readable USDC obligations, providers post performance bonds, independent verifiers clear signed evidence, and `ClearDealClearingHouse` settles only the final net positions on Arc Testnet.
 
-Circle provides the wallet and x402 rails. ArcStream adds the agent brain and spend guardrails: tool selection, multi-tool execution, Arc-native settlement proofs, and budget enforcement before each paid call.
+ClearDeal is an independent product built on Arc. Arc is the settlement infrastructure and does not imply endorsement by Circle.
 
-The public demo presents two payment models:
+## Release truth
 
-1. A real streaming subscription on Arc Testnet, where USDC accrues by the second.
-2. An x402-style pay-per-call flow, where an API returns HTTP 402 before verifying an Arc Testnet USDC transfer receipt.
+- Real wallet signatures and Arc Testnet contract reads/writes; no browser-only financial state.
+- Role-indexed cycles for economic participants, verifiers, and arbitrators.
+- Shareable Clearing Room and role-bound invite links that load public cycle state before wallet connection.
+- Provider USDC performance bonds with pass return and failure slashing.
+- Wallet-signed public metadata and evidence stored in durable KV and anchored by `bytes32` hashes.
+- Configurable verifier quorum plus independent arbitrator deadlock resolution.
+- Multilateral net positions calculated from passed obligations only.
+- Exact net-debtor funding followed by one batch settlement transaction.
+- Fail-closed deadlines and onchain debtor default history.
+- Risk passports derived from settled/defaulted contract state.
+- Browser reads use a rate-limited, read-only RPC proxy plus bounded retry/queue behavior; wallet providers still own transaction signing.
+- Arc Testnet only. Faucet USDC has no real-world value.
+- Custom contracts are tested and source-verified, but not professionally audited.
 
-## Problem
-
-AI agents need fresh data, but most data subscriptions are fixed-price, opaque, and designed for humans. ArcStream makes the cost and settlement lifecycle visible: consumers pay for the time or call they use, providers earn for delivered data, and payment outcomes can be verified.
-
-## Key Features
-
-- Marketplace comparison by data type, cost, freshness, and trust score
-- Real Pulse Price Feed streaming subscription on Arc Testnet
-- User-controlled USDC Approve, Start, and Stop transactions
-- Live fee accrual, settlement preview, provider payout, and user refund
-- Consumer Agent analysis and Provider Agent earnings views
-- Persistent settlement summary with ArcScan proof
-- x402 pay-per-call flow with HTTP 402 and Arc Testnet USDC receipt verification
-- Server-side research agent with per-run `maxBudgetUsdc` policy enforcement
-- Circle CLI workflow for agent wallet setup, service discovery, and x402 payments
-
-## Architecture
+## Clearing lifecycle
 
 ```text
-Consumer / Agent
-  |-- discovers streams --------> Next.js marketplace
-  |-- reads unlocked data ------> Pulse Price Feed API
-  |-- approves / starts / stops -> StreamPayment.sol on Arc Testnet
-  |-- reviews settlement -------> ArcScan
-
-x402 client
-  |-- GET without proof --------> HTTP 402 Payment Required
-  |-- USDC transfer on Arc -----> x-arcstream-payment-tx header
-  |-- GET with tx hash ---------> unlocked response + on-chain receipt
-
-Research agent
-  |-- loads budget policy ------> maxBudgetUsdc
-  |-- discovers paid tools -----> /api/catalog
-  |-- checks projected spend ---> blocks calls over budget
-  |-- calls paid tools ---------> x402 demo header today, Circle wallet next
-  |-- writes report trace ------> steps + spend + remaining budget
+Creator signs public cycle terms
+  -> creates participant, verifier, and obligation graph onchain
+  -> providers post USDC performance bonds
+  -> providers sign and submit evidence references
+  -> independent verifiers reach pass/fail quorum
+  -> arbitrator can resolve a verifier deadlock
+  -> contract removes failed obligations and computes net positions
+  -> net debtors fund only the calculated difference
+  -> one transaction pays net creditors and distributes bonds
+  -> risk passports record passes, failures, funding, slashing, and defaults
 ```
 
-## Payment Flows
+Example: A owes B 100 USDC, B owes C 90, and C owes A 80. Cleared gross is 270 USDC; the final net debit is 20 USDC, saving 250 USDC of settlement liquidity.
 
-### Real streaming subscription
+A public six-wallet Arc Testnet run completed the same topology at smaller test amounts: [Cycle #0](https://cleardeal-app.vercel.app/dashboard?cycle=0) cleared `0.27 USDC` gross into `0.02 USDC` net settlement and saved `0.25 USDC` of liquidity.
 
-User or agent deposits USDC → data unlocks → fee accrues per second → user manually stops stream → provider gets paid → unused USDC is refunded → ArcScan proof is shown.
+## Arc configuration
 
-### x402 pay-per-call
-
-Agent requests API → receives HTTP 402 with price and provider wallet → user authorizes a real USDC transfer on Arc Testnet → server verifies the on-chain transaction receipt (recipient + amount + USDC contract) → data unlocks → report is generated.
-
-The x402 flow verifies Arc Testnet USDC transaction receipts on-chain before unlocking data, with single-use replay protection.
-
-## Real vs Demo
-
-### Real on Arc Testnet
-
-- Pulse Price Feed streaming subscription
-- Approve / Start / Stop wallet transactions
-- Provider payout and user refund
-- ArcScan transaction proof
-- Research agent budget policy before paid tool calls
-
-### Preview streams
-
-- Market Sentiment Stream
-- Stablecoin Yield Stream
-- Wallet Risk Stream
-- x402 endpoints requiring Arc Testnet USDC transfer receipts before data unlocks
-
-## Network and Contracts
-
-- Network: Arc Testnet
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
-- USDC: `0x3600000000000000000000000000000000000000`
-- AgentRegistry: `0xd3624284C138E537465ED99bB1C79eaB9a6Ce140`
-- StreamPayment: `0x685D00B7821416F99B21aF31c80D3d3856e072d9`
-- [StreamPayment verified source on ArcScan](https://testnet.arcscan.app/address/0x685D00B7821416F99B21aF31c80D3d3856e072d9#code)
-- [AgentRegistry verified source on ArcScan](https://testnet.arcscan.app/address/0xd3624284C138E537465ED99bB1C79eaB9a6Ce140#code)
-- [Deployment transaction on ArcScan](https://testnet.arcscan.app/tx/0x8a0833cd1796dc7afd4130ddf99b54d0a5a1af72a6eacda8d3be41420013600c)
+- Canonical USDC: `0x3600000000000000000000000000000000000000`
+- ClearingHouse: `0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4`
+- Deployment block: `52623933`
+- Verified source: [ArcScan](https://testnet.arcscan.app/address/0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4#code)
 
-Full deployment metadata is stored in [`deployments/arcTestnet.json`](deployments/arcTestnet.json).
+Use the canonical 6-decimal ERC-20 view for balances, approvals, bonds, and settlement. Arc gas uses the 18-decimal native view of the same underlying USDC balance; never add the two views.
 
-## Tech Stack
+## Required configuration
 
-- Next.js 16 (App Router), React 18, TypeScript, Tailwind CSS v4
-- wagmi v3, viem (injected/MetaMask wallet connection)
-- Framer Motion, Recharts for UI/animation
-- Google Gemini (`@google/generative-ai`) for AI tool outputs
-- Circle CLI (`@circle-fin/cli`) for agent wallet and x402 service workflows
-- Solidity, Hardhat, OpenZeppelin Contracts
-- Arc Testnet USDC
+```bash
+NEXT_PUBLIC_APP_URL=https://your-domain.example
+NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.network
+NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
+NEXT_PUBLIC_CLEARING_HOUSE_ADDRESS=0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4
+NEXT_PUBLIC_CLEARING_DEPLOYMENT_BLOCK=52623933
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
+KV_REST_API_URL=https://...
+KV_REST_API_TOKEN=...
+```
 
-## Local Setup
+Deployment values remain server-only:
 
-Requirements: Node.js 20+ and a wallet configured for Arc Testnet.
+```bash
+ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
+DEPLOYER_PRIVATE_KEY=0x...
+USDC_ADDRESS=0x3600000000000000000000000000000000000000
+```
+
+Never commit `.env`, wallet keys, or provider tokens.
+
+## Development and verification
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
-```
-
-Open `http://127.0.0.1:3000`.
-
-For Windows PowerShell, create `.env.local` manually from `.env.example` rather than using `cp`.
-
-## Environment Variables
-
-Public frontend configuration:
-
-```text
-NEXT_PUBLIC_CHAIN_ID=5042002
-NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=0xd3624284C138E537465ED99bB1C79eaB9a6Ce140
-NEXT_PUBLIC_STREAM_PAYMENT_ADDRESS=0x685D00B7821416F99B21aF31c80D3d3856e072d9
-NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
-NEXT_PUBLIC_APP_URL=https://your-production-testnet-url.example
-KV_REST_API_URL=
-KV_REST_API_TOKEN=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-X402_MIN_CONFIRMATIONS=1
-```
-
-Server/deployment-only variables are documented as empty placeholders in `.env.example`.
-
-**Never commit private keys, `.env`, or `.env.local`. Never place a private key in a `NEXT_PUBLIC_*` variable.**
-
-## Useful Commands
-
-```bash
 npm run lint
 npm run build
-npm run dev
-npm run compile:contracts
-npm run circle -- --help
-npm run circle -- wallet create --help
-npm run circle -- services pay --help
+npm run test:contracts
+npm run qa:cleardeal
+npm run e2e:clearing:testnet
 ```
 
-The x402 endpoint is `GET /api/x402/pulse-price`.
+The E2E command is dry-run by default. `CLEARDEAL_E2E_EXECUTE=true` enables one public Arc Testnet run with a hard funding cap; `CLEARDEAL_E2E_CYCLE_ID=<id>` safely resumes a matching interrupted run. It must never be used on mainnet.
 
-Circle agent wallet notes are in [`docs/CIRCLE_AGENT_WALLETS.md`](docs/CIRCLE_AGENT_WALLETS.md).
-Arc AI skills and MCP setup notes are in [`docs/ARC_AI_SETUP.md`](docs/ARC_AI_SETUP.md).
+Deploy a new Testnet instance only after reviewing the gas preview and funding a dedicated deployer with faucet USDC:
 
-## Vercel Deployment Notes
+```bash
+npm run deploy:clearing:testnet
+```
 
-1. Import this project into Vercel with the project root set to `arcstream`.
-2. Add only the documented `NEXT_PUBLIC_*` values required by the frontend.
-3. Do not add `DEPLOYER_PRIVATE_KEY`; deployment does not need it.
-4. Run `npm run lint` and `npm run build`.
-5. Configure Vercel KV or Upstash Redis REST variables for public API rate limiting and x402 replay protection.
-6. Verify MetaMask/injected wallet connection, Arc Testnet switching, and all routes after deployment.
-7. Verify the serverless x402 endpoint returns HTTP 402 without a payment transaction hash.
+`GET /api/health` verifies RPC reachability, canonical USDC, deployed ClearingHouse bytecode and USDC binding, app URL, and durable signed-record storage. It returns `503` until every production dependency is ready.
 
-Frontend deployment is intentionally not performed by this repository workflow.
+## Security boundary
 
-## Roadmap
-
-- Add durable database/KV replay protection for x402 transaction hashes
-- Replace research-agent demo headers with Circle agent wallet x402 payments
-- Add contract-level on-chain spending cap for agent wallets
-- Add verifiable reputation and delivery metrics
-- Add production-grade price providers and monitoring
+- Wallets retain all signing authority; the server never receives private keys.
+- Metadata/evidence signatures publish public records but cannot move USDC.
+- `/api/arc-rpc` permits only read and estimation methods, rejects raw transaction submission, and applies durable per-IP rate limits.
+- Bonds and net-position deposits are held by the contract, not the web server.
+- Every token approval and contract write requires explicit wallet confirmation and a successful receipt.
+- Arc Privacy is roadmap only and is never represented as a live confidentiality feature.
+- A professional Solidity audit, legal review, incident plan, and mainnet-specific deployment are required before valuable assets.
