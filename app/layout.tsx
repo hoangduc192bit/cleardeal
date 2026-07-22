@@ -32,11 +32,12 @@ export const metadata: Metadata = {
     "Record connected payments, approve completed work, and settle only the final USDC difference on Arc Testnet.",
   icons: {
     icon: [
-      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
-      { url: "/logo-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.svg?v=cleardeal-3", type: "image/svg+xml" },
+      { url: "/favicon.png?v=cleardeal-3", sizes: "32x32", type: "image/png" },
+      { url: "/logo-192.png?v=cleardeal-3", sizes: "192x192", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
-    shortcut: "/favicon.png",
+    apple: [{ url: "/apple-touch-icon.png?v=cleardeal-3", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.svg?v=cleardeal-3",
   },
   openGraph: {
     title: "ClearDeal | Shared USDC Settlement on Arc",

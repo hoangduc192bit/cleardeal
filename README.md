@@ -59,9 +59,18 @@ NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 NEXT_PUBLIC_CLEARING_HOUSE_ADDRESS=0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4
 NEXT_PUBLIC_CLEARING_DEPLOYMENT_BLOCK=52623933
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
+NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_KEY=...
+NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_URL=...
 KV_REST_API_URL=https://...
 KV_REST_API_TOKEN=...
 ```
+
+The two Circle Modular Wallets values enable ClearDeal's optional passkey path.
+Allow the production domain in the Circle Console passkey settings before
+deploying. The integration creates a user-controlled Circle smart account on
+Arc Testnet and sends contract actions through Circle's bundler with Paymaster
+enabled. If either value is absent, ClearDeal fails closed and keeps the
+browser-wallet and WalletConnect fallbacks available.
 
 Deployment values remain server-only:
 
@@ -97,7 +106,7 @@ npm run deploy:clearing:testnet
 
 ## Security boundary
 
-- Wallets retain all signing authority; the server never receives private keys.
+- Wallets retain all signing authority; the server never receives private keys. Passkey accounts require device confirmation for signatures.
 - Metadata/evidence signatures publish public records but cannot move USDC.
 - `/api/arc-rpc` permits only read and estimation methods, rejects raw transaction submission, and applies durable per-IP rate limits.
 - Bonds and net-position deposits are held by the contract, not the web server.

@@ -152,6 +152,23 @@ textarea.cd-input {
   color: #2b2118;
 }
 
+.cleardeal .passkey-panel,
+.cleardeal-app .passkey-panel {
+  color: #ffffff !important;
+}
+
+.cleardeal .passkey-panel .passkey-panel-copy,
+.cleardeal-app .passkey-panel .passkey-panel-copy {
+  color: #dbeafe !important;
+}
+
+.cleardeal .passkey-panel .passkey-panel-badge,
+.cleardeal-app .passkey-panel .passkey-panel-badge {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff !important;
+}
+
 .cleardeal [class*="border-white"],
 .cleardeal-app [class*="border-white"] {
   border-color: #e5e5e5;

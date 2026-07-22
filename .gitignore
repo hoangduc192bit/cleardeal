@@ -28,7 +28,7 @@ tsconfig.tsbuildinfo
 *.log
 
 # Build artifacts / archives
-arcstream-source.zip
+cleardeal-source.zip
 *.zip
 
 .vercel

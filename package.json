@@ -17,6 +17,7 @@
     "deploy:clearing:testnet": "hardhat run scripts/deploy-clearing.ts --network arcTestnet"
   },
   "dependencies": {
+    "@circle-fin/modular-wallets-core": "^1.0.14",
     "@openzeppelin/contracts": "^5.4.0",
     "@tanstack/react-query": "^5.90.21",
     "@walletconnect/ethereum-provider": "^2.23.10",

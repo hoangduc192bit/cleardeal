@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Wallet } from "lucide-react";
+import {
+  ChevronDown,
+  KeyRound,
+  ShieldCheck,
+  Smartphone,
+  Wallet,
+} from "lucide-react";
 import {
   useAccount,
   useChainId,
@@ -11,13 +17,18 @@ import {
 } from "wagmi";
 
 import { arcTestnet } from "@/config/chain";
-import { isWalletConnectConfigured } from "@/config/wagmi";
+import {
+  isCirclePasskeyConfigured,
+  isWalletConnectConfigured,
+} from "@/config/wagmi";
 
 function shortAddress(address: `0x${string}`) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function walletLabel(name: string) {
+  if (name.toLowerCase().includes("create passkey")) return "Create passkey account";
+  if (name.toLowerCase().includes("existing passkey")) return "Use existing passkey";
   if (name.toLowerCase().includes("walletconnect")) return "WalletConnect";
   if (name.toLowerCase().includes("injected")) return "Browser Wallet";
   return name;
@@ -90,7 +101,7 @@ export function WalletButton() {
           type="button"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          {shortAddress(address)}
+          Account {shortAddress(address)}
         </button>
       </div>
     );
@@ -105,24 +116,70 @@ export function WalletButton() {
         type="button"
       >
         <Wallet className="h-3.5 w-3.5" />
-        {isPending ? "Connecting..." : "Connect Wallet"}
+        {isPending ? "Signing in..." : "Sign in"}
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {menuMounted && (
-        <div data-origin="top-right" className={`t-dropdown absolute right-0 top-[calc(100%+10px)] z-50 w-80 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,.18)] ${open ? "is-open" : menuClosing ? "is-closing" : ""}`}>
-          <div className="px-2 pb-3">
-            <div className="text-[14px] font-bold text-slate-950">
-              Connect payment wallet
+        <div data-origin="top-right" className={`t-dropdown absolute right-0 top-[calc(100%+10px)] z-50 w-[22rem] rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,.18)] ${open ? "is-open" : menuClosing ? "is-closing" : ""}`}>
+          <div className="passkey-panel rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-4 text-white">
+            <div className="flex items-center gap-2 text-[15px] font-bold">
+              <KeyRound className="h-4 w-4" />
+              Sign in to ClearDeal
             </div>
-            <p className="mt-1 text-[12px] leading-relaxed text-slate-500">
-              Connect the wallet assigned to your settlement room to guarantee delivery, review work, pay a final difference, or receive USDC on Arc Testnet.
+            <p className="passkey-panel-copy mt-1.5 text-[12px] leading-relaxed text-blue-100">
+              Use your device passkey. No seed phrase, wallet extension, or volatile gas token required.
             </p>
+            <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-blue-50">
+              <span className="passkey-panel-badge rounded-lg bg-white/10 px-1 py-1.5">User controlled</span>
+              <span className="passkey-panel-badge rounded-lg bg-white/10 px-1 py-1.5">USDC native</span>
+              <span className="passkey-panel-badge rounded-lg bg-white/10 px-1 py-1.5">Arc Testnet</span>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="mt-3 space-y-1.5">
             {availableConnectors
-              .filter((connector) => hasInjectedWallet || walletLabel(connector.name) !== "Browser Wallet")
+              .filter((connector) => walletLabel(connector.name).includes("passkey"))
+              .map((connector) => (
+                <button
+                  className="flex min-h-12 w-full cursor-pointer items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-3.5 text-left text-[13px] font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isPending}
+                  key={connector.uid}
+                  onClick={() => {
+                    closeMenu();
+                    connect({ connector });
+                  }}
+                  type="button"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
+                      {walletLabel(connector.name).startsWith("Create") ? <ShieldCheck className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
+                    </span>
+                    {walletLabel(connector.name)}
+                  </span>
+                  <span className="text-[11px] text-blue-500">Continue</span>
+                </button>
+              ))}
+
+            {!isCirclePasskeyConfigured ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">
+                <span className="font-bold">Passkey beta is code-complete but not enabled.</span>{" "}
+                Add the Circle Modular Wallets client URL and client key to the deployment after allowing this domain in Circle Console.
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-2 px-1 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" />
+              Existing crypto wallet
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            {availableConnectors
+              .filter((connector) => {
+                const label = walletLabel(connector.name);
+                if (label.includes("passkey")) return false;
+                return hasInjectedWallet || label !== "Browser Wallet";
+              })
               .map((connector) => (
                 <button
                   className="flex min-h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-left text-[13px] font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
@@ -134,14 +191,17 @@ export function WalletButton() {
                   }}
                   type="button"
                 >
-                  <span>{walletLabel(connector.name)}</span>
+                  <span className="flex items-center gap-2">
+                    {walletLabel(connector.name) === "WalletConnect" ? <Smartphone className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
+                    {walletLabel(connector.name)}
+                  </span>
                   <span className="text-[11px] text-slate-400">Connect</span>
                 </button>
               ))}
 
             {!hasInjectedWallet && !isWalletConnectConfigured && (
               <>
-                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-3 text-[12px] leading-relaxed text-indigo-300">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[12px] leading-relaxed text-slate-600">
                   No browser wallet detected. Open ClearDeal in Chrome or Brave
                   with MetaMask installed.
                 </div>

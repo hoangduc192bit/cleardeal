@@ -794,8 +794,8 @@ export function DashboardClient() {
             ) : !isConnected && requestedCycleId === undefined ? (
               <Empty
                 icon={Network}
-                title="Connect a wallet"
-                text="Connect a room wallet, or open the completed public example."
+                title="Sign in to begin"
+                text="Use a passkey or your assigned payment account, or open the completed public example."
               />
             ) : cycles.length === 0 ? (
               <Empty
