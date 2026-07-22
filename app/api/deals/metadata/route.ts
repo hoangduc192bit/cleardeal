@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAddress, verifyMessage, type Address, type Hex } from "viem";
+import { isAddress, type Address, type Hex } from "viem";
 
 import {
   buildStoreDealMetadataMessage,
@@ -16,9 +16,9 @@ import {
   storeDealMetadata,
 } from "@/lib/cleardeal-metadata-store";
 import { rateLimit } from "@/lib/rate-limit";
+import { isSupportedWalletSignature, verifyWalletMessage } from "@/lib/wallet-signature";
 
 const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
-const SIGNATURE_PATTERN = /^0x[a-fA-F0-9]{130}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 
 export const dynamic = "force-dynamic";
@@ -68,8 +68,7 @@ export async function POST(request: Request) {
     !REQUEST_ID_PATTERN.test(body.requestId) ||
     !body.issuedAt ||
     !isFreshClearDealAuthorization(body.issuedAt) ||
-    !body.signature ||
-    !SIGNATURE_PATTERN.test(body.signature)
+    !isSupportedWalletSignature(body.signature)
   ) {
     return NextResponse.json({ error: "invalid_metadata_authorization" }, { status: 400 });
   }
@@ -84,7 +83,7 @@ export async function POST(request: Request) {
     requestId: body.requestId,
     issuedAt: body.issuedAt,
   };
-  const signatureValid = await verifyMessage({
+  const signatureValid = await verifyWalletMessage({
     address: authorization.ownerAddress,
     message: buildStoreDealMetadataMessage(authorization),
     signature: body.signature as Hex,

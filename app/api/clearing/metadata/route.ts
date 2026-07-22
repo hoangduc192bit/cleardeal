@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAddress, verifyMessage, type Address, type Hex } from "viem";
+import { isAddress, type Address, type Hex } from "viem";
 
 import {
   buildStoreClearingMetadataMessage,
@@ -16,9 +16,12 @@ import {
   storeClearingMetadata,
 } from "@/lib/clearing-metadata-store";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  isSupportedWalletSignature,
+  verifyWalletMessage,
+} from "@/lib/wallet-signature";
 
 const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
-const SIGNATURE_PATTERN = /^0x[a-fA-F0-9]{130}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 
 export const dynamic = "force-dynamic";
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
     typeof body.metadataHash !== "string" || !HASH_PATTERN.test(body.metadataHash) ||
     !metadata || typeof body.requestId !== "string" || !REQUEST_ID_PATTERN.test(body.requestId) ||
     typeof body.issuedAt !== "number" || !isFreshClearingAuthorization(body.issuedAt) ||
-    typeof body.signature !== "string" || !SIGNATURE_PATTERN.test(body.signature)
+    !isSupportedWalletSignature(body.signature)
   ) return NextResponse.json({ error: "invalid_metadata_authorization" }, { status: 400 });
 
   const metadataHash = body.metadataHash as Hex;
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
     requestId: body.requestId as string,
     issuedAt: body.issuedAt as number,
   };
-  const signatureValid = await verifyMessage({
+  const signatureValid = await verifyWalletMessage({
     address: authorization.ownerAddress,
     message: buildStoreClearingMetadataMessage(authorization),
     signature: body.signature as Hex,

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { createPublicClient, http, isAddress, verifyMessage, type Address, type Hex } from "viem";
+import { createPublicClient, http, isAddress, type Address, type Hex } from "viem";
 
 import { arcTestnet } from "@/config/chain";
 import { clearingHouseAbi, clearingHouseAddress } from "@/lib/clearing-contract";
@@ -22,9 +22,9 @@ import {
 } from "@/lib/clearing-evidence-store";
 import { createRpcReadQueue } from "@/lib/arc-rpc";
 import { rateLimit } from "@/lib/rate-limit";
+import { isSupportedWalletSignature, verifyWalletMessage } from "@/lib/wallet-signature";
 
 const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
-const SIGNATURE_PATTERN = /^0x[a-fA-F0-9]{130}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const MAX_REQUEST_BYTES = 750_000;
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     typeof body.evidenceHash !== "string" || !HASH_PATTERN.test(body.evidenceHash) ||
     !evidence || !attachmentPayloads || typeof body.requestId !== "string" || !REQUEST_ID_PATTERN.test(body.requestId) ||
     typeof body.issuedAt !== "number" || !isFreshClearingEvidenceAuthorization(body.issuedAt) ||
-    typeof body.signature !== "string" || !SIGNATURE_PATTERN.test(body.signature)
+    !isSupportedWalletSignature(body.signature)
   ) return NextResponse.json({ error: "invalid_evidence_authorization" }, { status: 400 });
   const evidenceHash = body.evidenceHash as Hex;
   if (hashClearingEvidence(evidence).toLowerCase() !== evidenceHash.toLowerCase()) {
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     requestId: body.requestId as string,
     issuedAt: body.issuedAt as number,
   };
-  const signatureValid = await verifyMessage({ address: authorization.providerAddress, message: buildStoreClearingEvidenceMessage(authorization), signature: body.signature as Hex }).catch(() => false);
+  const signatureValid = await verifyWalletMessage({ address: authorization.providerAddress, message: buildStoreClearingEvidenceMessage(authorization), signature: body.signature as Hex });
   if (!signatureValid) return NextResponse.json({ error: "invalid_wallet_signature" }, { status: 401 });
 
   const publicClient = createPublicClient({ chain: arcTestnet, transport: http(arcTestnet.rpcUrls.default.http[0]) });

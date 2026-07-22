@@ -382,17 +382,6 @@ export function DashboardClient() {
       const signature = await signMessageAsync({
         message: buildStoreClearingMetadataMessage(authorization),
       });
-      const response = await fetch("/api/clearing/metadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...authorization, metadata, signature }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(body.error ?? "Could not store signed cycle metadata.");
-      }
       const obligations = input.obligations.map((item) => ({
         payer: item.payer,
         provider: item.provider,
@@ -440,6 +429,20 @@ export function DashboardClient() {
         ],
       });
       const receipt = await waitFor(hash, "Clearing cycle creation");
+      const response = await fetch("/api/clearing/metadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...authorization, metadata, signature }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setTransaction({
+          status: "error",
+          message: `Room was created on Arc, but its descriptive metadata could not be stored: ${body.error ?? "metadata_store_failed"}`,
+        });
+      }
       const created = parseEventLogs({
         abi: clearingHouseAbi,
         logs: receipt.logs,
