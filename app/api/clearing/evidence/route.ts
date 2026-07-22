@@ -27,7 +27,7 @@ import { isSupportedWalletSignature, verifyWalletMessage } from "@/lib/wallet-si
 const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const MAX_REQUEST_BYTES = 750_000;
+const MAX_REQUEST_BYTES = 3_000_000;
 export const dynamic = "force-dynamic";
 
 function normalizeAttachmentPayloads(evidence: NonNullable<ReturnType<typeof normalizeClearingEvidence>>, value: unknown) {

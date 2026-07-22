@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download, FileCheck2, ShieldCheck } from "lucide-react";
@@ -60,7 +61,62 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
                 : stored.evidence.reference}
             </div>
 
-            {stored.evidence.attachments?.length ? <section className="mt-8 border-t border-slate-200 pt-6"><h2 className="text-sm font-semibold">Attached files</h2><div className="mt-4 space-y-3">{stored.evidence.attachments.map((attachment, index) => <a key={attachment.sha256} href={`/api/clearing/evidence/attachment?hash=${hash}&index=${index}`} className="flex items-center justify-between gap-4 border border-slate-200 bg-slate-50 p-4 hover:border-blue-300"><span className="min-w-0"><strong className="block truncate text-[12px]">{attachment.name}</strong><span className="mt-1 block font-mono text-[9px] text-slate-500">{attachment.contentType} · {(attachment.size / 1_000).toFixed(1)} KB</span></span><Download className="h-4 w-4 shrink-0 text-blue-600" /></a>)}</div></section> : <p className="mt-8 border-t border-slate-200 pt-6 text-[12px] text-slate-500">No file was attached. The signed public reference is the complete evidence record.</p>}
+            {stored.evidence.attachments?.length ? (
+              <section className="mt-8 border-t border-slate-200 pt-6">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold">Invoice &amp; delivery files</h2>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Review every attachment before approving or rejecting the work.
+                    </p>
+                  </div>
+                  <span className="font-mono text-[9px] uppercase text-slate-400">
+                    {stored.evidence.attachments.length} public file{stored.evidence.attachments.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {stored.evidence.attachments.map((attachment, index) => {
+                    const attachmentUrl = `/api/clearing/evidence/attachment?hash=${hash}&index=${index}`;
+                    const isImage = attachment.contentType === "image/jpeg" || attachment.contentType === "image/png";
+                    return (
+                      <article key={attachment.sha256} className="overflow-hidden border border-slate-200 bg-slate-50">
+                        {isImage ? (
+                          <a href={`${attachmentUrl}&view=1`} target="_blank" rel="noreferrer" className="block bg-slate-100">
+                            <Image
+                              src={`${attachmentUrl}&view=1`}
+                              alt={`Evidence attachment ${attachment.name}`}
+                              width={720}
+                              height={480}
+                              unoptimized
+                              className="h-52 w-full object-contain"
+                            />
+                          </a>
+                        ) : (
+                          <div className="grid h-28 place-items-center bg-slate-100">
+                            <FileCheck2 className="h-8 w-8 text-slate-300" />
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between gap-4 p-4">
+                          <span className="min-w-0">
+                            <strong className="block truncate text-[12px]">{attachment.name}</strong>
+                            <span className="mt-1 block font-mono text-[9px] text-slate-500">
+                              {attachment.contentType} · {(attachment.size / 1_000).toFixed(1)} KB
+                            </span>
+                          </span>
+                          <a href={attachmentUrl} aria-label={`Download ${attachment.name}`} className="grid h-9 w-9 shrink-0 place-items-center border border-slate-200 bg-white text-blue-600 hover:border-blue-300">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : (
+              <p className="mt-8 border-t border-slate-200 pt-6 text-[12px] text-slate-500">
+                No file was attached. The signed public reference is the complete evidence record.
+              </p>
+            )}
           </article>
 
           <aside className="h-fit border border-slate-200 bg-[#fffaf0] p-5">

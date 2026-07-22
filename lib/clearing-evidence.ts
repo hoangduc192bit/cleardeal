@@ -6,9 +6,9 @@ export const CLEARING_EVIDENCE_ALLOWED_ATTACHMENT_TYPES = [
   "image/png",
   "text/plain",
 ] as const;
-export const CLEARING_EVIDENCE_MAX_ATTACHMENTS = 2;
-export const CLEARING_EVIDENCE_MAX_ATTACHMENT_BYTES = 250_000;
-export const CLEARING_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES = 400_000;
+export const CLEARING_EVIDENCE_MAX_ATTACHMENTS = 3;
+export const CLEARING_EVIDENCE_MAX_ATTACHMENT_BYTES = 1_000_000;
+export const CLEARING_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES = 2_000_000;
 
 export interface ClearingEvidenceAttachment {
   name: string;

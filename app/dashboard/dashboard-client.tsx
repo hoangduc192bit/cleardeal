@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -978,8 +979,8 @@ export function DashboardClient() {
                   records who should pay whom.
                 </li>
                 <li>
-                  <strong className="mr-2 text-white/75">2.</strong>Reviewers
-                  approve completed work.
+                  <strong className="mr-2 text-white/75">2.</strong>Assigned
+                  approvers review invoices and delivery evidence.
                 </li>
                 <li>
                   <strong className="mr-2 text-white/75">3.</strong>ClearDeal
@@ -1129,6 +1130,7 @@ function CycleDetail({
           canClose={canClose}
           canSettle={canSettle}
         />
+        <RoomLifecycle cycle={cycle} />
         <div
           className={`mt-6 grid gap-px bg-white/[0.08] ${
             advancedMode ? "sm:grid-cols-4" : "sm:grid-cols-3"
@@ -1168,7 +1170,7 @@ function CycleDetail({
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30">
               Payment commitments
             </p>
-            <h3 className="mt-1 text-lg font-semibold">Work review</h3>
+            <h3 className="mt-1 text-lg font-semibold">Invoice &amp; delivery review</h3>
           </div>
           <Vote className="h-5 w-5 text-white/25" />
         </div>
@@ -1239,11 +1241,15 @@ function CycleDetail({
                       disabled={busy}
                       icon={FileCheck2}
                     >
-                      Submit proof of work
+                      Upload invoice &amp; proof
                     </Action>
                   ) : null}
                   {verifier && obligation.status === "Verification" ? (
                     <>
+                      <p className="w-full text-[10px] leading-4 text-amber-200/60">
+                        Open the invoice and delivery evidence before recording
+                        your decision on Arc.
+                      </p>
                       <Action
                         onClick={() => onVote(obligation, true)}
                         disabled={busy}
@@ -1287,7 +1293,7 @@ function CycleDetail({
                       rel="noreferrer"
                       className="inline-flex min-h-9 items-center gap-2 border border-white/[0.1] px-3 text-[11px] text-white/55"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" /> View proof
+                      <ExternalLink className="h-3.5 w-3.5" /> Review invoice &amp; evidence
                     </a>
                   ) : null}
                 </div>
@@ -1365,6 +1371,118 @@ function CycleDetail({
   );
 }
 
+function RoomLifecycle({ cycle }: { cycle: ClearingCycleRecord }) {
+  const guaranteeComplete = cycle.obligations.every(
+    (item) => item.status !== "Bond required"
+  );
+  const evidenceComplete = cycle.obligations.every(
+    (item) =>
+      item.status !== "Bond required" && item.status !== "Evidence required"
+  );
+  const reviewComplete = cycle.finalizedCount === cycle.obligations.length;
+  const netComplete = cycle.status !== "Collecting evidence";
+  const settlementComplete = cycle.status === "Settled";
+  const currentStep = !guaranteeComplete
+    ? 0
+    : !evidenceComplete
+      ? 1
+      : !reviewComplete
+        ? 2
+        : !netComplete
+          ? 3
+          : 4;
+  const steps = [
+    {
+      title: "USDC guarantee",
+      text: guaranteeComplete ? "Provider bonds locked" : "Waiting for providers",
+      complete: guaranteeComplete,
+    },
+    {
+      title: "Invoice & evidence",
+      text: evidenceComplete ? "Evidence hashes recorded" : "Upload invoice or delivery proof",
+      complete: evidenceComplete,
+    },
+    {
+      title: "Approval",
+      text: reviewComplete
+        ? `${cycle.finalizedCount}/${cycle.obligations.length} decisions final`
+        : `${cycle.finalizedCount}/${cycle.obligations.length} finalized · waiting for approvers`,
+      complete: reviewComplete,
+    },
+    {
+      title: "Net balances",
+      text: netComplete
+        ? `${formatClearingUsdc(cycle.totalNetDebit)} required`
+        : "Calculate only the differences",
+      complete: netComplete,
+    },
+    {
+      title: "Arc settlement",
+      text: settlementComplete
+        ? "USDC distributed"
+        : cycle.status === "Defaulted"
+          ? "Payment deadline missed"
+          : "Waiting for final funding",
+      complete: settlementComplete,
+    },
+  ];
+
+  return (
+    <section className="mt-4 border border-white/[0.09] bg-black/15 p-4 sm:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-[8px] uppercase tracking-[0.14em] text-white/30">
+            Live clearing workflow
+          </p>
+          <h3 className="mt-1 text-sm font-semibold text-white">
+            Every party can see what happens next.
+          </h3>
+        </div>
+        <p className="max-w-md text-[10px] leading-4 text-white/35 sm:text-right">
+          Attachments stay offchain; their fingerprints, USDC guarantees,
+          approvals, and final settlement are verifiable on Arc.
+        </p>
+      </div>
+      <ol className="mt-4 grid gap-px bg-white/[0.08] sm:grid-cols-5">
+        {steps.map((step, index) => {
+          const active = index === currentStep && !settlementComplete;
+          return (
+            <li
+              key={step.title}
+              className={`min-h-24 bg-[#080d13] p-3 ${
+                active ? "shadow-[inset_0_2px_0_#60a5fa]" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={`grid h-6 w-6 place-items-center rounded-full font-mono text-[9px] ${
+                    step.complete
+                      ? "bg-emerald-400/15 text-emerald-300"
+                      : active
+                        ? "bg-blue-500 text-white"
+                        : "bg-white/[0.06] text-white/30"
+                  }`}
+                >
+                  {step.complete ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                </span>
+                <span className="font-mono text-[8px] uppercase text-white/25">
+                  {step.complete ? "Done" : active ? "Now" : "Next"}
+                </span>
+              </div>
+              <strong className="mt-3 block text-[11px] text-white/75">
+                {step.title}
+              </strong>
+              <span className="mt-1 block text-[9px] leading-4 text-white/32">
+                {step.text}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function NextActionPanel({
   cycle,
   account,
@@ -1414,13 +1532,13 @@ function NextActionPanel({
     text =
       "Lock the displayed testnet USDC guarantee to show that your delivery commitment is backed.";
   } else if (providerWork?.status === "Evidence required") {
-    title = "Submit proof of completed work";
+    title = "Upload invoice & delivery evidence";
     text =
-      "Add a public URL, content hash, deployment ID, or short delivery statement for independent review.";
+      "Attach invoice images, receipts, PDFs, or delivery photos and add a short note for the assigned approver.";
   } else if (reviewReady) {
-    title = "Review the submitted work";
+    title = "Review invoice & delivery evidence";
     text =
-      "Compare the proof with its acceptance rule, then approve or reject it independently.";
+      "Open every attachment, compare it with the approval rule, then approve or reject on Arc.";
   } else if (
     arbitrator &&
     cycle.obligations.some((item) => item.status === "Verification")
@@ -1554,7 +1672,7 @@ function InvitePanel({
                   {invite.role === "participant"
                     ? "payment participant"
                     : invite.role === "verifier"
-                    ? "independent reviewer"
+                    ? "assigned approver"
                     : "dispute resolver"}{" "}
                   · {shortWallet(invite.wallet)}
                 </span>
@@ -1645,39 +1763,43 @@ function EvidenceModal({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          void onSubmit(reference, files);
+          const evidenceNote =
+            reference.trim() || "Invoice and delivery evidence attached.";
+          void onSubmit(evidenceNote, files);
         }}
         className="t-modal is-open max-h-[90dvh] w-full max-w-[620px] overflow-y-auto border border-white/[0.14] bg-[#090f16] p-6"
       >
         <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-blue-300">
-          Proof of work · Room {target.cycle.id.toString()}
+          Invoice &amp; delivery evidence · Room {target.cycle.id.toString()}
         </p>
         <h2 className="mt-3 text-xl font-semibold">
           {target.obligation.title}
         </h2>
         <p className="mt-2 text-[12px] leading-5 text-white/40">
-          Add a delivery note and optionally attach a small invoice, receipt, or
-          output file. File fingerprints become part of the signed evidence hash
-          recorded on Arc.
+          Upload invoice images, receipts, PDFs, delivery photos, or output files.
+          Their fingerprints become part of the signed evidence hash recorded on
+          Arc before an approver can decide.
         </p>
+        <label className="mt-5 block font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">
+          Delivery note or invoice reference
+        </label>
         <textarea
           autoFocus
-          required
           maxLength={1000}
-          rows={6}
+          rows={4}
           value={reference}
           onChange={(event) => setReference(event.target.value)}
-          placeholder="Public URL, content hash, deployment ID, or a concise delivery statement…"
-          className="cd-input mt-5 resize-none"
+          placeholder="Example: Invoice INV-2026-018, 12 menus delivered on July 22. Add a public URL if available."
+          className="cd-input mt-2 resize-none"
         />
         <section className="mt-4 border border-white/[0.1] bg-white/[0.025] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[12px] font-semibold text-white/75">
-                Attach supporting files
+                Upload invoice or delivery files
               </p>
               <p className="mt-1 text-[10px] leading-4 text-white/35">
-                Optional · up to {CLEARING_EVIDENCE_MAX_ATTACHMENTS} public
+                Up to {CLEARING_EVIDENCE_MAX_ATTACHMENTS} public
                 files ·{" "}
                 {Math.floor(
                   CLEARING_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES / 1_000
@@ -1686,7 +1808,7 @@ function EvidenceModal({
               </p>
             </div>
             <label className="inline-flex min-h-10 cursor-pointer items-center justify-center border border-blue-400/20 bg-blue-500/[0.08] px-4 text-[11px] font-semibold text-blue-200 hover:bg-blue-500/[0.14]">
-              Choose files
+              Choose images or PDF
               <input
                 type="file"
                 multiple
@@ -1699,15 +1821,18 @@ function EvidenceModal({
             </label>
           </div>
           {files.length ? (
-            <ul className="mt-4 space-y-2">
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {files.map((file) => (
                 <li
                   key={`${file.name}:${file.size}`}
-                  className="flex items-center justify-between gap-3 border-t border-white/[0.08] pt-2 text-[10px]"
+                  className="overflow-hidden border border-white/[0.1] bg-black/20 text-[10px]"
                 >
-                  <span className="truncate text-white/60">{file.name}</span>
-                  <span className="shrink-0 font-mono text-white/30">
-                    {(file.size / 1_000).toFixed(1)} KB
+                  <LocalAttachmentPreview file={file} />
+                  <span className="flex items-center justify-between gap-3 p-3">
+                    <span className="truncate text-white/60">{file.name}</span>
+                    <span className="shrink-0 font-mono text-white/30">
+                      {(file.size / 1_000).toFixed(1)} KB
+                    </span>
                   </span>
                 </li>
               ))}
@@ -1734,13 +1859,46 @@ function EvidenceModal({
           </button>
           <button
             type="submit"
-            disabled={busy || !reference.trim() || Boolean(fileError)}
+            disabled={
+              busy || (!reference.trim() && files.length === 0) || Boolean(fileError)
+            }
             className="min-h-10 bg-blue-600 px-5 text-[12px] font-semibold disabled:opacity-40"
           >
-            {busy ? "Waiting…" : "Sign & submit proof"}
+            {busy ? "Waiting…" : "Sign & submit evidence"}
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function LocalAttachmentPreview({ file }: { file: File }) {
+  const [previewUrl, setPreviewUrl] = useState<string>();
+  const isImage = file.type === "image/jpeg" || file.type === "image/png";
+
+  useEffect(() => {
+    if (!isImage) return;
+    const nextUrl = URL.createObjectURL(file);
+    setPreviewUrl(nextUrl);
+    return () => URL.revokeObjectURL(nextUrl);
+  }, [file, isImage]);
+
+  if (isImage && previewUrl) {
+    return (
+      <Image
+        src={previewUrl}
+        alt={`Preview of ${file.name}`}
+        width={560}
+        height={320}
+        unoptimized
+        className="h-32 w-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="grid h-20 place-items-center bg-white/[0.025]">
+      <FileCheck2 className="h-6 w-6 text-white/25" />
     </div>
   );
 }

@@ -30,10 +30,13 @@ export async function GET(request: Request) {
   }
 
   const safeName = descriptor.name.replace(/[^a-zA-Z0-9._ -]/g, "_");
+  const inlineImage =
+    url.searchParams.get("view") === "1" &&
+    (descriptor.contentType === "image/jpeg" || descriptor.contentType === "image/png");
   return new Response(bytes, {
     headers: {
       "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="${safeName}"`,
+      "Content-Disposition": `${inlineImage ? "inline" : "attachment"}; filename="${safeName}"`,
       "Content-Length": String(bytes.length),
       "Content-Type": descriptor.contentType,
       "X-Content-Type-Options": "nosniff",

@@ -41,9 +41,9 @@ export function CreateCycleModal({ open, ownerAddress, disabledReason, busy, onC
   const [name, setName] = useState("Agency delivery settlement");
   const [description, setDescription] = useState("Approve completed work, offset connected payments, and settle only the final USDC difference.");
   const [participants, setParticipants] = useState([{ label: "Customer", address: "" }, { label: "Service provider", address: "" }]);
-  const [verifiers, setVerifiers] = useState([{ label: "Reviewer 1", address: "" }, { label: "Reviewer 2", address: "" }]);
+  const [verifiers, setVerifiers] = useState([{ label: "Customer approver", address: "" }]);
   const [arbitrator, setArbitrator] = useState("");
-  const [threshold, setThreshold] = useState(2);
+  const [threshold, setThreshold] = useState(1);
   const [evidenceDeadline, setEvidenceDeadline] = useState(dateAfter(7));
   const [fundingDeadline, setFundingDeadline] = useState(dateAfter(14));
   const [obligations, setObligations] = useState([{ payer: "", provider: "", title: "Approved project delivery", acceptance: "The final delivery matches the agreed scope and is available at the submitted proof link.", amount: "10", bond: "1" }]);
@@ -96,15 +96,15 @@ export function CreateCycleModal({ open, ownerAddress, disabledReason, busy, onC
     const participantAddresses = participants.map((item) => item.address);
     const verifierAddresses = verifiers.map((item) => item.address);
     if (participantAddresses.some((address) => !isAddress(address)) || verifierAddresses.some((address) => !isAddress(address)) || !isAddress(arbitrator)) {
-      return setFormError("Every participant, reviewer, and dispute resolver needs a valid EVM wallet.");
+      return setFormError("Every participant, approver, and dispute resolver needs a valid wallet address.");
     }
     if (!participantAddresses.some((address) => address.toLowerCase() === ownerAddress.toLowerCase())) return setFormError("The connected room creator must be a participant.");
     if (!uniqueAddresses(participantAddresses) || !uniqueAddresses(verifierAddresses)) return setFormError("Role wallets cannot be duplicated.");
     const participantSet = new Set(participantAddresses.map((address) => address.toLowerCase()));
     if (verifierAddresses.some((address) => participantSet.has(address.toLowerCase())) || participantSet.has(arbitrator.toLowerCase()) || verifierAddresses.some((address) => address.toLowerCase() === arbitrator.toLowerCase())) {
-      return setFormError("Reviewers and the dispute resolver must be independent from payment participants and each other.");
+      return setFormError("Approver and dispute-resolver signing wallets must be different from the payment wallets and from each other.");
     }
-    if (!Number.isInteger(threshold) || threshold < 1 || threshold > verifiers.length) return setFormError("Required approvals must be between 1 and the reviewer count.");
+    if (!Number.isInteger(threshold) || threshold < 1 || threshold > verifiers.length) return setFormError("Required approvals must be between 1 and the approver count.");
     const evidenceAt = Date.parse(`${evidenceDeadline}T23:59:59Z`);
     const fundingAt = Date.parse(`${fundingDeadline}T23:59:59Z`);
     if (!Number.isFinite(evidenceAt) || evidenceAt <= Date.now() || !Number.isFinite(fundingAt) || fundingAt <= evidenceAt) return setFormError("The final payment date must be after the future proof deadline.");
@@ -142,7 +142,7 @@ export function CreateCycleModal({ open, ownerAddress, disabledReason, busy, onC
     <div className={`t-modal-overlay fixed inset-0 z-[90] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm ${phase === "open" ? "is-open" : phase === "closing" ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-labelledby="create-cycle-title">
       <form onSubmit={submit} className={`t-modal cd-scrollbar max-h-[94dvh] w-full max-w-[980px] overflow-y-auto rounded-[20px] border border-slate-200 bg-white shadow-[0_40px_120px_rgba(15,23,42,.25)] ${phase === "open" ? "is-open" : phase === "closing" ? "is-closing" : ""}`}>
         <div className="flex items-start justify-between border-b border-slate-200 p-6">
-          <div><p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-600">New settlement room</p><h2 id="create-cycle-title" className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Set up who pays whom.</h2><p className="mt-2 max-w-2xl text-[13px] leading-5 text-slate-600">Record the people, payment commitments, and independent reviewers. ClearDeal will calculate the final USDC difference after work is approved.</p></div>
+          <div><p className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-blue-600">New settlement room</p><h2 id="create-cycle-title" className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">Set up who pays whom.</h2><p className="mt-2 max-w-2xl text-[13px] leading-5 text-slate-600">Record the payment parties, choose who approves invoices and delivery evidence, then let ClearDeal calculate the final USDC difference.</p></div>
           <button type="button" disabled={busy} onClick={onClose} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-950" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
 
@@ -152,13 +152,13 @@ export function CreateCycleModal({ open, ownerAddress, disabledReason, busy, onC
         {step === 1 ? <section className="p-6"><div><p className="font-mono text-[9px] uppercase tracking-[0.14em] text-white/30">Start from a real scenario</p><div className="mt-3 grid gap-2 sm:grid-cols-3"><TemplateButton title="Agency & contractors" text="Client work and downstream delivery" onClick={() => applyTemplate("agency")} /><TemplateButton title="AI service marketplace" text="Agents buying services from agents" onClick={() => applyTemplate("agents")} /><TemplateButton title="Supplier network" text="Connected orders between companies" onClick={() => applyTemplate("suppliers")} /></div></div><div className="mt-6 grid gap-5 md:grid-cols-2">
           <Field label="Room name"><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className="cd-input" /></Field>
           <Field label="Description" wide><textarea required maxLength={500} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} className="cd-input resize-none" /></Field>
-          <Field label="Proof of work due"><input required type="date" min={dateAfter(1)} value={evidenceDeadline} onChange={(event) => setEvidenceDeadline(event.target.value)} className="cd-input" /></Field>
+          <Field label="Invoice & proof due"><input required type="date" min={dateAfter(1)} value={evidenceDeadline} onChange={(event) => setEvidenceDeadline(event.target.value)} className="cd-input" /></Field>
           <Field label="Final payment due"><input required type="date" min={dateAfter(2)} value={fundingDeadline} onChange={(event) => setFundingDeadline(event.target.value)} className="cd-input" /></Field>
         </div></section> : null}
 
         {step === 2 ? <div><RoleEditor title="Payment participants" hint="Add every person, company, or agent that can owe or receive USDC. Your connected wallet is included first." rows={participants} setRows={setParticipants} max={20} ownerAddress={ownerAddress} />
-        <RoleEditor title="Independent reviewers" hint="These wallets approve proof of completed work and cannot be payment participants." rows={verifiers} setRows={setVerifiers} max={10} />
-        <section className="grid gap-5 border-t border-white/[0.1] p-6 md:grid-cols-2"><Field label="Approvals required"><input required type="number" min={1} max={verifiers.length} value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} className="cd-input" /></Field><Field label="Independent dispute resolver"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x…" className="cd-input font-mono" /></Field></section></div> : null}
+        <RoleEditor title="Approver wallets" hint="Choose who may approve invoices and delivery evidence: the customer’s accounts-payable signer, a marketplace reviewer, or an auditor. Use a signing wallet different from the payment wallets." rows={verifiers} setRows={setVerifiers} max={10} />
+        <section className="grid gap-5 border-t border-white/[0.1] p-6 md:grid-cols-2"><Field label="Approvals required"><input required type="number" min={1} max={verifiers.length} value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} className="cd-input" /></Field><Field label="Fallback dispute resolver"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x…" className="cd-input font-mono" /></Field></section></div> : null}
 
         {step === 3 ? <section className="p-6">
           <div className="flex items-end justify-between gap-4"><div><h3 className="text-sm font-semibold text-white">Payment commitments</h3><p className="mt-1 text-[12px] text-white/36">Only approved work is included when final balances are calculated.</p></div><div className="text-right"><p className="font-mono text-[9px] uppercase text-white/30">Total recorded</p><strong className="mt-1 block font-mono text-lg text-white">{gross.toLocaleString()} USDC</strong></div></div>
