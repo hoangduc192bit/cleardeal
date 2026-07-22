@@ -88,7 +88,16 @@ export function circlePasskeyConnector({
         publicClient as never,
       );
 
-      return circleProvider.asEIP1193Provider() as CircleEip1193Provider;
+      // modular-wallets-core@1.0.14 loses the provider's `this` binding inside
+      // asEIP1193Provider(), which makes requests fail while reading
+      // `bundlerClient`. Keep the class method bound and unwrap its JSON-RPC
+      // response here instead.
+      return {
+        request: async (args) => {
+          const response = await circleProvider.request(args as never);
+          return response.result as never;
+        },
+      } as CircleEip1193Provider;
     }
 
     async function getProvider() {
