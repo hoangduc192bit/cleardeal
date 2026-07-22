@@ -87,6 +87,7 @@ export function circlePasskeyConnector({
         bundlerClient as never,
         publicClient as never,
       );
+      const circleAccountAddress = await account.getAddress();
 
       // modular-wallets-core@1.0.14 loses the provider's `this` binding inside
       // asEIP1193Provider(), which makes requests fail while reading
@@ -94,7 +95,46 @@ export function circlePasskeyConnector({
       // response here instead.
       return {
         request: async (args) => {
-          const response = await circleProvider.request(args as never);
+          const request = args as {
+            method: string;
+            params?: readonly unknown[];
+          };
+          let circleRequest = request;
+
+          // Circle 1.0.14 compares signing addresses case-sensitively. Wagmi
+          // supplies a checksummed address, while the smart account may retain
+          // the same address in lowercase. Verify them canonically, then pass
+          // Circle its original representation.
+          if (request.method === "personal_sign" && request.params) {
+            const [challenge, requestedAddress] = request.params;
+            if (
+              typeof requestedAddress !== "string" ||
+              getAddress(requestedAddress) !== getAddress(circleAccountAddress)
+            ) {
+              throw new Error("Invalid Circle passkey account.");
+            }
+            circleRequest = {
+              ...request,
+              params: [challenge, circleAccountAddress],
+            };
+          } else if (
+            request.method === "eth_signTypedData_v4" &&
+            request.params
+          ) {
+            const [requestedAddress, typedData] = request.params;
+            if (
+              typeof requestedAddress !== "string" ||
+              getAddress(requestedAddress) !== getAddress(circleAccountAddress)
+            ) {
+              throw new Error("Invalid Circle passkey account.");
+            }
+            circleRequest = {
+              ...request,
+              params: [circleAccountAddress, typedData],
+            };
+          }
+
+          const response = await circleProvider.request(circleRequest as never);
           return response.result as never;
         },
       } as CircleEip1193Provider;
