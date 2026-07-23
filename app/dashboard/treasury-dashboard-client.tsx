@@ -874,7 +874,7 @@ function ExpenseDetail({
           {expense.metadata?.title ??
             `Expense request #${expense.id.toString()}`}
         </h2>
-        <div className="mt-5 grid gap-4 border-t border-[#e8e1d6] pt-5 text-[11px] sm:grid-cols-4">
+        <div className="mt-5 grid gap-4 border-t border-[#e8e1d6] pt-5 text-[11px] sm:grid-cols-2 2xl:grid-cols-4">
           <Fact
             label="Department"
             value={expense.metadata?.department ?? "—"}
@@ -1000,13 +1000,13 @@ function ExpenseDetail({
 function ExpenseWorkflow({ expense }: { expense: ExpenseRecord }) {
   const current =
     expense.status === "Manager approval"
-      ? 1
+      ? 2
       : expense.status === "Invoice & delivery"
-        ? 2
+        ? 3
         : expense.status === "Finance approval"
-          ? 3
+          ? 4
           : expense.status === "Paid"
-            ? 5
+            ? 6
             : 0;
   const steps = [
     "Request",
@@ -1077,6 +1077,8 @@ function EvidenceFiles({ expense }: { expense: ExpenseRecord }) {
               ? `${attachments.length} verified attachment${
                   attachments.length === 1 ? "" : "s"
                 }`
+              : expense.evidence
+                ? "Signed invoice note submitted"
               : "Waiting for sample invoice evidence"}
           </h3>
         </div>
