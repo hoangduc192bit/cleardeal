@@ -49,6 +49,7 @@ import {
   CreateExpenseModal,
   type CreateExpenseInput,
 } from "@/components/treasury/CreateExpenseModal";
+import { VndCashoutPreview } from "@/components/treasury/VndCashoutPreview";
 import { ClearDealBrand } from "@/components/cleardeal/ClearDealBrand";
 import { WalletButton } from "@/components/WalletButton";
 import { arcTestnet } from "@/config/chain";
@@ -819,6 +820,7 @@ export function TreasuryDashboardClient() {
           />
           <NextAction expense={selected} account={address} />
           <ArcPaymentRecord expense={selected} />
+          <VndCashoutPreview walletBalance={walletBalance} />
         </aside>
       </section>
 
