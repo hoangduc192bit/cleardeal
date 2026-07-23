@@ -129,4 +129,20 @@ describe("ClearDealTreasury", function () {
       .withArgs(0, second.finance.address);
     expect((await second.treasury.expenses(0)).status).to.equal(4);
   });
+
+  it("lets only the requester cancel before manager approval", async function () {
+    const first = await deployFixture();
+    await expect(first.treasury.connect(first.outsider).cancelExpense(0))
+      .to.be.revertedWithCustomError(first.treasury, "Unauthorized");
+    await expect(first.treasury.connect(first.requester).cancelExpense(0))
+      .to.emit(first.treasury, "ExpenseCancelled")
+      .withArgs(0, first.requester.address);
+    expect((await first.treasury.expenses(0)).status).to.equal(5);
+
+    const second = await deployFixture();
+    await second.treasury.connect(second.manager).managerDecision(0, true);
+    await expect(
+      second.treasury.connect(second.requester).cancelExpense(0),
+    ).to.be.revertedWithCustomError(second.treasury, "InvalidState");
+  });
 });

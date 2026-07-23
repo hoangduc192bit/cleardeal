@@ -778,6 +778,21 @@ export function TreasuryDashboardClient() {
                   approved ? "Manager approval" : "Request rejection",
                 )
               }
+              onCancel={() =>
+                void runAction(
+                  async () => {
+                    const ready = await requireReady();
+                    return await writeContractAsync({
+                      address: ready.contract,
+                      abi: clearDealTreasuryAbi,
+                      chainId: arcTestnet.id,
+                      functionName: "cancelExpense",
+                      args: [selected.id],
+                    });
+                  },
+                  "Expense cancellation",
+                )
+              }
               onUpload={() => setEvidenceTarget(selected)}
               onFinanceReject={() =>
                 void runAction(
@@ -846,6 +861,7 @@ function ExpenseDetail({
   account,
   busy,
   onManagerDecision,
+  onCancel,
   onUpload,
   onFinanceReject,
   onPay,
@@ -854,6 +870,7 @@ function ExpenseDetail({
   account?: Address;
   busy: boolean;
   onManagerDecision: (approved: boolean) => void;
+  onCancel: () => void;
   onUpload: () => void;
   onFinanceReject: () => void;
   onPay: () => void;
@@ -959,6 +976,16 @@ function ExpenseDetail({
                 Reject
               </SecondaryAction>
             </>
+          ) : null}
+          {isRequester && expense.status === "Manager approval" ? (
+            <SecondaryAction
+              icon={XCircle}
+              disabled={busy}
+              danger
+              onClick={onCancel}
+            >
+              Cancel request
+            </SecondaryAction>
           ) : null}
           {isRequester && expense.status === "Invoice & delivery" ? (
             <PrimaryAction
