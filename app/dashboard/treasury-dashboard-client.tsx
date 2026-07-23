@@ -685,7 +685,7 @@ export function TreasuryDashboardClient() {
       ) : null}
 
       <section className="mx-auto grid max-w-[1500px] gap-3 px-5 py-6 sm:px-8 xl:grid-cols-[330px_minmax(0,1fr)_320px]">
-        <aside className="min-h-[620px] border border-[#ded5c6] bg-[#fffdf7]">
+        <aside className="min-h-[260px] border border-[#ded5c6] bg-[#fffdf7] xl:min-h-[620px]">
           <div className="flex items-center justify-between border-b border-[#ded5c6] px-5 py-4">
             <div>
               <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-[#766b5d]">
