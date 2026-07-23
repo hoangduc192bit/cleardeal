@@ -11,6 +11,7 @@ import {
   Check,
   CheckCircle2,
   CircleDollarSign,
+  Copy,
   Download,
   ExternalLink,
   FileCheck2,
@@ -878,6 +879,21 @@ function ExpenseDetail({
   const isManager = sameAddress(account, expense.manager);
   const isRequester = sameAddress(account, expense.requester);
   const isFinance = sameAddress(account, expense.finance);
+  const [copiedRole, setCopiedRole] = useState<string>();
+  const nextRole =
+    expense.status === "Manager approval"
+      ? "Manager"
+      : expense.status === "Invoice & delivery"
+        ? "Requester"
+        : expense.status === "Finance approval"
+          ? "Finance"
+          : undefined;
+  const roleWallets = [
+    { label: "Requester", address: expense.requester },
+    { label: "Manager", address: expense.manager },
+    { label: "Finance", address: expense.finance },
+    { label: "Vendor", address: expense.vendor },
+  ] as const;
   const remaining =
     expense.payoutAmount > 0n
       ? expense.approvedBudget - expense.payoutAmount
@@ -933,6 +949,67 @@ function ExpenseDetail({
             good
           />
         </div>
+        <section className="mt-6 border border-[#ded5c6] bg-[#f7f4e9]">
+          <div className="border-b border-[#ded5c6] px-4 py-3">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">
+              Assigned wallets
+            </p>
+            <p className="mt-1 text-[10px] leading-4 text-[#766b5d]">
+              Connect the wallet marked “Next signer” to continue this request.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2">
+            {roleWallets.map((role, index) => {
+              const connected = sameAddress(account, role.address);
+              return (
+                <div
+                  key={role.label}
+                  className={`min-w-0 p-4 ${
+                    index % 2 === 0 ? "md:border-r md:border-[#ded5c6]" : ""
+                  } ${
+                    index < 3
+                      ? "border-b border-[#ded5c6]"
+                      : ""
+                  } ${index === 2 ? "md:border-b-0" : ""} ${
+                    connected ? "bg-emerald-50" : "bg-white"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-[11px]">{role.label}</strong>
+                    <div className="flex items-center gap-1.5">
+                      {nextRole === role.label ? (
+                        <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 font-mono text-[8px] uppercase text-amber-800">
+                          Next signer
+                        </span>
+                      ) : null}
+                      {connected ? (
+                        <span className="rounded border border-emerald-300 bg-emerald-100 px-2 py-1 font-mono text-[8px] uppercase text-emerald-800">
+                          Connected
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <code className="mt-3 block break-all font-mono text-[9px] leading-4 text-[#574c40]">
+                    {role.address}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard
+                        .writeText(role.address)
+                        .then(() => setCopiedRole(role.label));
+                    }}
+                    className="mt-3 inline-flex items-center gap-1.5 text-[9px] font-semibold text-[#a56b00]"
+                    aria-label={`Copy ${role.label.toLowerCase()} wallet`}
+                  >
+                    <Copy className="h-3 w-3" />
+                    {copiedRole === role.label ? "Copied" : "Copy address"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
         <div className="mt-6 grid gap-5 border-y border-[#e8e1d6] py-5 sm:grid-cols-2">
           <div>
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">
