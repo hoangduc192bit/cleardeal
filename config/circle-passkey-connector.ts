@@ -1,6 +1,7 @@
 import { createConnector } from "wagmi";
 import {
   getAddress,
+  isHex,
   numberToHex,
   type Address,
   type EIP1193RequestFn,
@@ -108,15 +109,21 @@ export function circlePasskeyConnector({
           if (request.method === "personal_sign" && request.params) {
             const [challenge, requestedAddress] = request.params;
             if (
+              typeof challenge !== "string" ||
+              !isHex(challenge, { strict: true }) ||
               typeof requestedAddress !== "string" ||
               getAddress(requestedAddress) !== getAddress(circleAccountAddress)
             ) {
               throw new Error("Invalid Circle passkey account.");
             }
-            circleRequest = {
-              ...request,
-              params: [challenge, circleAccountAddress],
-            };
+            // `personal_sign` carries the original message as hex-encoded
+            // bytes. Circle 1.0.14 forwards that value as a UTF-8 string,
+            // producing a signature for the literal "0x..." text instead of
+            // the original message. Sign the raw bytes so EIP-191 verification
+            // matches standard wallets and the server authorization message.
+            return (await account.signMessage({
+              message: { raw: challenge },
+            })) as never;
           } else if (
             request.method === "eth_signTypedData_v4" &&
             request.params

@@ -3,6 +3,7 @@ import {
   http,
   isHex,
   size,
+  stringToHex,
   type Address,
   type Hex,
   type SignableMessage,
@@ -29,5 +30,22 @@ export async function verifyWalletMessage(input: {
   message: SignableMessage;
   signature: Hex;
 }) {
-  return publicClient.verifyMessage(input).catch(() => false);
+  if (await publicClient.verifyMessage(input).catch(() => false)) {
+    return true;
+  }
+
+  // Compatibility for Circle Modular Wallets 1.0.14 EIP-1193 clients that
+  // signed the hex-encoded `personal_sign` challenge as literal UTF-8 text.
+  // The candidate is deterministically derived from the same authorization
+  // message, so the wallet still signs every server-validated field.
+  if (typeof input.message === "string") {
+    return publicClient
+      .verifyMessage({
+        ...input,
+        message: stringToHex(input.message),
+      })
+      .catch(() => false);
+  }
+
+  return false;
 }
