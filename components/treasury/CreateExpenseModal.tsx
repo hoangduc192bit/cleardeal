@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Building2, ChevronRight, ReceiptText, X } from "lucide-react";
 import { isAddress, type Address } from "viem";
 
+import type { WalletDirectoryEntry } from "@/hooks/use-wallet-directory";
+
 export interface CreateExpenseInput {
   title: string;
   purpose: string;
@@ -22,12 +24,14 @@ export function CreateExpenseModal({
   open,
   busy,
   ownerAddress,
+  walletDirectory,
   onClose,
   onCreate,
 }: {
   open: boolean;
   busy: boolean;
   ownerAddress?: Address;
+  walletDirectory: WalletDirectoryEntry[];
   onClose: () => void;
   onCreate: (input: CreateExpenseInput) => Promise<void>;
 }) {
@@ -237,6 +241,10 @@ export function CreateExpenseModal({
                 placeholder="0x…"
                 className="cd-input font-mono"
               />
+              <SavedWalletPicker
+                entries={walletDirectory}
+                onSelect={setManager}
+              />
             </Field>
             <Field label="Finance wallet">
               <input
@@ -246,6 +254,10 @@ export function CreateExpenseModal({
                 placeholder="0x…"
                 className="cd-input font-mono"
               />
+              <SavedWalletPicker
+                entries={walletDirectory}
+                onSelect={setFinance}
+              />
             </Field>
             <Field label="Vendor payment wallet" wide>
               <input
@@ -254,6 +266,10 @@ export function CreateExpenseModal({
                 onChange={(event) => setVendor(event.target.value)}
                 placeholder="0x…"
                 className="cd-input font-mono"
+              />
+              <SavedWalletPicker
+                entries={walletDirectory}
+                onSelect={setVendor}
               />
             </Field>
             <Field label="Arc memo code" wide>
@@ -327,6 +343,39 @@ export function CreateExpenseModal({
         </footer>
       </form>
     </div>
+  );
+}
+
+function SavedWalletPicker({
+  entries,
+  onSelect,
+}: {
+  entries: WalletDirectoryEntry[];
+  onSelect: (address: string) => void;
+}) {
+  if (!entries.length) {
+    return (
+      <span className="text-[9px] leading-4 text-[#766b5d]">
+        Add named wallets from Wallet directory for faster selection.
+      </span>
+    );
+  }
+  return (
+    <select
+      value=""
+      onChange={(event) => {
+        if (event.target.value) onSelect(event.target.value);
+      }}
+      className="cd-input text-[11px]"
+      aria-label="Choose a saved wallet"
+    >
+      <option value="">Choose a saved wallet…</option>
+      {entries.map((entry) => (
+        <option key={entry.address} value={entry.address}>
+          {entry.name} · {entry.category}
+        </option>
+      ))}
+    </select>
   );
 }
 

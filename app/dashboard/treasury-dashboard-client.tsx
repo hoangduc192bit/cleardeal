@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  BookUser,
   Building2,
   Check,
   CheckCircle2,
@@ -51,10 +52,15 @@ import {
   type CreateExpenseInput,
 } from "@/components/treasury/CreateExpenseModal";
 import { VndCashoutPreview } from "@/components/treasury/VndCashoutPreview";
+import { WalletDirectoryModal } from "@/components/treasury/WalletDirectoryModal";
 import { ClearDealBrand } from "@/components/cleardeal/ClearDealBrand";
 import { WalletButton } from "@/components/WalletButton";
 import { arcTestnet } from "@/config/chain";
 import { useExpenseRequests } from "@/hooks/use-expense-requests";
+import {
+  useWalletDirectory,
+  type WalletDirectoryEntry,
+} from "@/hooks/use-wallet-directory";
 import {
   formatExpenseUsdc,
   shortExpenseWallet,
@@ -194,10 +200,16 @@ export function TreasuryDashboardClient() {
   );
   const [selectedId, setSelectedId] = useState<bigint>();
   const [createOpen, setCreateOpen] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<ExpenseRecord>();
   const [busy, setBusy] = useState(false);
   const [transaction, setTransaction] = useState<TransactionState>();
   const [walletBalance, setWalletBalance] = useState<bigint>();
+  const {
+    entries: walletDirectory,
+    saveEntry: saveWalletDirectoryEntry,
+    removeEntry: removeWalletDirectoryEntry,
+  } = useWalletDirectory();
 
   useEffect(() => {
     if (!expenses.length) {
@@ -631,16 +643,26 @@ export function TreasuryDashboardClient() {
               only after the work is verified.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            disabled={Boolean(disabledReason)}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#ffc23d] px-5 text-[13px] font-semibold shadow-sm hover:bg-[#f4ad14] disabled:cursor-not-allowed disabled:opacity-45"
-            title={disabledReason}
-          >
-            <Plus className="h-4 w-4" />
-            New expense request
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setDirectoryOpen(true)}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-[#ded5c6] bg-white px-5 text-[13px] font-semibold text-[#574c40] shadow-sm hover:bg-[#f7f4e9]"
+            >
+              <BookUser className="h-4 w-4" />
+              Wallet directory
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              disabled={Boolean(disabledReason)}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#ffc23d] px-5 text-[13px] font-semibold shadow-sm hover:bg-[#f4ad14] disabled:cursor-not-allowed disabled:opacity-45"
+              title={disabledReason}
+            >
+              <Plus className="h-4 w-4" />
+              New expense request
+            </button>
+          </div>
         </div>
       </section>
 
@@ -763,6 +785,7 @@ export function TreasuryDashboardClient() {
             <ExpenseDetail
               expense={selected}
               account={address}
+              walletDirectory={walletDirectory}
               busy={busy}
               onManagerDecision={(approved) =>
                 void runAction(
@@ -844,8 +867,17 @@ export function TreasuryDashboardClient() {
         open={createOpen}
         busy={busy}
         ownerAddress={address}
+        walletDirectory={walletDirectory}
         onClose={() => setCreateOpen(false)}
         onCreate={createExpense}
+      />
+      <WalletDirectoryModal
+        open={directoryOpen}
+        entries={walletDirectory}
+        connectedAddress={address}
+        onClose={() => setDirectoryOpen(false)}
+        onSave={saveWalletDirectoryEntry}
+        onRemove={removeWalletDirectoryEntry}
       />
       <ExpenseEvidenceModal
         expense={evidenceTarget}
@@ -860,6 +892,7 @@ export function TreasuryDashboardClient() {
 function ExpenseDetail({
   expense,
   account,
+  walletDirectory,
   busy,
   onManagerDecision,
   onCancel,
@@ -869,6 +902,7 @@ function ExpenseDetail({
 }: {
   expense: ExpenseRecord;
   account?: Address;
+  walletDirectory: WalletDirectoryEntry[];
   busy: boolean;
   onManagerDecision: (approved: boolean) => void;
   onCancel: () => void;
@@ -961,6 +995,9 @@ function ExpenseDetail({
           <div className="grid md:grid-cols-2">
             {roleWallets.map((role, index) => {
               const connected = sameAddress(account, role.address);
+              const savedName = walletDirectory.find((entry) =>
+                sameAddress(entry.address, role.address),
+              )?.name;
               return (
                 <div
                   key={role.label}
@@ -975,7 +1012,16 @@ function ExpenseDetail({
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-[11px]">{role.label}</strong>
+                    <div>
+                      <strong className="block text-[11px]">
+                        {savedName ?? role.label}
+                      </strong>
+                      {savedName ? (
+                        <span className="mt-0.5 block font-mono text-[8px] uppercase tracking-[0.12em] text-[#766b5d]">
+                          {role.label}
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="flex items-center gap-1.5">
                       {nextRole === role.label ? (
                         <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 font-mono text-[8px] uppercase text-amber-800">
