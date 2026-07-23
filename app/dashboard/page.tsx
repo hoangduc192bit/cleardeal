@@ -1,20 +1,20 @@
 import { Suspense } from "react";
 
-import { DashboardClient } from "@/app/dashboard/dashboard-client";
+import { TreasuryDashboardClient } from "@/app/dashboard/treasury-dashboard-client";
 
 export default function DashboardPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#05090d]">
-          <div className="flex items-center gap-3 text-[13px] text-white/40">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/15 border-t-blue-500" />
-            Loading clearing workspace…
+        <main className="flex min-h-screen items-center justify-center bg-[#fbf7eb]">
+          <div className="flex items-center gap-3 text-[13px] text-stone-500">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-200 border-t-amber-500" />
+            Loading company spend workspace…
           </div>
         </main>
       }
     >
-      <DashboardClient />
+      <TreasuryDashboardClient />
     </Suspense>
   );
 }

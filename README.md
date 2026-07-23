@@ -1,11 +1,26 @@
 # ClearDeal
 
-ClearDeal is a clearing and assurance network for autonomous commerce. Participants commit machine-readable USDC obligations, providers post performance bonds, independent verifiers clear signed evidence, and `ClearDealClearingHouse` settles only the final net positions on Arc Testnet.
+ClearDeal is approval-controlled company spending on Arc. Employees request
+vendor payments, managers approve a budget, the requester adds signed invoice
+or delivery evidence, and Finance releases USDC only after every control has
+passed. The final payment carries an Arc transaction memo for reconciliation.
+
+The original multilateral clearing proof remains available at `/clearing`.
+Participants can still commit connected USDC obligations and settle only their
+final net positions through `ClearDealClearingHouse`.
 
 ClearDeal is an independent product built on Arc. Arc is the settlement infrastructure and does not imply endorsement by Circle.
 
 ## Release truth
 
+- `ClearDealTreasury` runs the complete request -> manager approval -> evidence
+  -> finance payment workflow on Arc Testnet.
+- Finance pays the vendor through Arc's native Memo contract, preserving the
+  Finance EOA as `msg.sender` and recording a searchable expense reference.
+- Employees and managers can use Circle Modular Wallet passkeys; Arc Memo
+  currently requires the final Finance transaction to come from an EOA.
+- Public Testnet files are intentionally limited to sample invoice and delivery
+  evidence. Confidential and salary data must not be uploaded.
 - Real wallet signatures and Arc Testnet contract reads/writes; no browser-only financial state.
 - Role-indexed cycles for economic participants, verifiers, and arbitrators.
 - Shareable Clearing Room and role-bound invite links that load public cycle state before wallet connection.
@@ -37,7 +52,20 @@ Creator signs public cycle terms
 
 Example: A owes B 100 USDC, B owes C 90, and C owes A 80. Cleared gross is 270 USDC; the final net debit is 20 USDC, saving 250 USDC of settlement liquidity.
 
-A public six-wallet Arc Testnet run completed the same topology at smaller test amounts: [Cycle #0](https://cleardeal-app.vercel.app/dashboard?cycle=0) cleared `0.27 USDC` gross into `0.02 USDC` net settlement and saved `0.25 USDC` of liquidity.
+A public six-wallet Arc Testnet run completed the same topology at smaller test amounts: [Cycle #0](https://cleardeal-app.vercel.app/clearing?cycle=0) cleared `0.27 USDC` gross into `0.02 USDC` net settlement and saved `0.25 USDC` of liquidity.
+
+## Company spend lifecycle
+
+```text
+Employee signs an expense request
+  -> manager approves or rejects the budget
+  -> employee signs the final invoice and sample delivery evidence
+  -> contract locks the exact payable amount at or below the budget
+  -> Finance reviews the evidence
+  -> Finance EOA sends one Arc Memo transaction
+  -> ClearDealTreasury transfers USDC directly to the vendor
+  -> expense, evidence hash, memo ID, and payment remain publicly auditable
+```
 
 ## Arc configuration
 
@@ -46,7 +74,10 @@ A public six-wallet Arc Testnet run completed the same topology at smaller test 
 - Canonical USDC: `0x3600000000000000000000000000000000000000`
 - ClearingHouse: `0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4`
 - Deployment block: `52623933`
-- Verified source: [ArcScan](https://testnet.arcscan.app/address/0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4#code)
+- Treasury: `0x596c87B47B0557ae1226208914888C2872736dc2`
+- Treasury deployment block: `53217435`
+- Verified ClearingHouse: [ArcScan](https://testnet.arcscan.app/address/0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4#code)
+- Verified Treasury: [ArcScan](https://testnet.arcscan.app/address/0x596c87B47B0557ae1226208914888C2872736dc2#code)
 
 Use the canonical 6-decimal ERC-20 view for balances, approvals, bonds, and settlement. Arc gas uses the 18-decimal native view of the same underlying USDC balance; never add the two views.
 
@@ -58,6 +89,8 @@ NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.network
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 NEXT_PUBLIC_CLEARING_HOUSE_ADDRESS=0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4
 NEXT_PUBLIC_CLEARING_DEPLOYMENT_BLOCK=52623933
+NEXT_PUBLIC_CLEARDEAL_TREASURY_ADDRESS=0x596c87B47B0557ae1226208914888C2872736dc2
+NEXT_PUBLIC_CLEARDEAL_TREASURY_DEPLOYMENT_BLOCK=53217435
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_KEY=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_URL=...
@@ -92,6 +125,7 @@ npm run build
 npm run test:contracts
 npm run qa:cleardeal
 npm run e2e:clearing:testnet
+npm run e2e:treasury:testnet
 ```
 
 The E2E command is dry-run by default. `CLEARDEAL_E2E_EXECUTE=true` enables one public Arc Testnet run with a hard funding cap; `CLEARDEAL_E2E_CYCLE_ID=<id>` safely resumes a matching interrupted run. It must never be used on mainnet.
@@ -100,6 +134,7 @@ Deploy a new Testnet instance only after reviewing the gas preview and funding a
 
 ```bash
 npm run deploy:clearing:testnet
+npm run deploy:treasury:testnet
 ```
 
 `GET /api/health` verifies RPC reachability, canonical USDC, deployed ClearingHouse bytecode and USDC binding, app URL, and durable signed-record storage. It returns `503` until every production dependency is ready.

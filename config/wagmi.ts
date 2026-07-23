@@ -36,7 +36,7 @@ function createWagmiConfig() {
       showQrModal: true,
       metadata: {
         name: "ClearDeal",
-        description: "Clearing and assurance for autonomous commerce on Arc Testnet",
+        description: "Approval-controlled company spending in USDC on Arc Testnet",
         url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://cleardeal-app.vercel.app",
         icons: [`${process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://cleardeal-app.vercel.app"}/logo-192.png`],
       },

@@ -57,7 +57,7 @@ export function WalletButton() {
     window.clearTimeout(closeTimer.current);
     setMenuMounted(true);
     setMenuClosing(false);
-    requestAnimationFrame(() => setOpen(true));
+    setOpen(true);
   }
 
   function closeMenu() {

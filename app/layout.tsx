@@ -27,9 +27,9 @@ const appUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "ClearDeal | Shared USDC Settlement on Arc",
+  title: "ClearDeal | Company Spend Controls on Arc",
   description:
-    "Record connected payments, approve completed work, and settle only the final USDC difference on Arc Testnet.",
+    "Request, approve, verify, and pay company expenses in USDC with an auditable transaction memo on Arc Testnet.",
   icons: {
     icon: [
       { url: "/favicon.ico?v=cleardeal-4", sizes: "any", type: "image/x-icon" },
@@ -41,15 +41,16 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico?v=cleardeal-4",
   },
   openGraph: {
-    title: "ClearDeal | Shared USDC Settlement on Arc",
-    description: "Many connected payments enter. Only the final USDC difference moves on Arc Testnet.",
+    title: "ClearDeal | Company Spend Controls on Arc",
+    description:
+      "Turn company spending requests into approved, evidence-backed USDC payments on Arc Testnet.",
     images: [{ url: clearDealLogo.src, width: 577, height: 433, alt: "ClearDeal" }],
     type: "website",
   },
   twitter: {
     card: "summary",
     title: "ClearDeal",
-    description: "Record connected payments and settle only the final USDC difference on Arc Testnet.",
+    description: "Request, approve, verify, and pay company expenses in USDC on Arc Testnet.",
     images: [clearDealLogo.src],
   },
 };

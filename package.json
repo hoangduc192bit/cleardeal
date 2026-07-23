@@ -13,8 +13,10 @@
     "audit:dependencies": "npm audit --omit=dev",
     "qa:cleardeal": "node scripts/qa-cleardeal.mjs",
     "e2e:clearing:testnet": "hardhat run scripts/e2e-clearing-testnet.ts --network arcTestnet",
+    "e2e:treasury:testnet": "hardhat run scripts/e2e-treasury-testnet.ts --network arcTestnet",
     "deploy:cleardeal:testnet": "hardhat run scripts/deploy-cleardeal.ts --network arcTestnet",
-    "deploy:clearing:testnet": "hardhat run scripts/deploy-clearing.ts --network arcTestnet"
+    "deploy:clearing:testnet": "hardhat run scripts/deploy-clearing.ts --network arcTestnet",
+    "deploy:treasury:testnet": "hardhat run scripts/deploy-treasury.ts --network arcTestnet"
   },
   "dependencies": {
     "@circle-fin/modular-wallets-core": "^1.0.14",

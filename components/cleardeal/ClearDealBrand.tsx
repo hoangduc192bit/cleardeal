@@ -17,7 +17,7 @@ export function ClearDealBrand({ compact = false }: { compact?: boolean }) {
         />
       </span>
       {compact ? null : (
-        <span className="border-l border-slate-200 pl-3 font-mono text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <span className="hidden border-l border-slate-200 pl-3 font-mono text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-500 sm:inline">
           Built on Arc
         </span>
       )}
