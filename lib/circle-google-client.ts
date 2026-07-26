@@ -271,7 +271,6 @@ export async function resumeCircleGoogleLogin() {
   };
 
   sdk = await createSdk(onLoginComplete, flow);
-  await sdk.getDeviceId();
   if (!callbackStarted) {
     loginWatchdog = window.setTimeout(() => {
       void finishRedirect(

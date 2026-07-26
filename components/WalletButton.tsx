@@ -52,6 +52,9 @@ export function WalletButton() {
   const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleWalletReady, setGoogleWalletReady] = useState(false);
+  const [googleWalletAddress, setGoogleWalletAddress] = useState<
+    `0x${string}` | undefined
+  >();
   const [googleWalletModal, setGoogleWalletModal] = useState(false);
   const [googleWalletMessage, setGoogleWalletMessage] = useState<string>();
   const [recoveryMode, setRecoveryMode] = useState<
@@ -74,11 +77,19 @@ export function WalletButton() {
       .then(async (response) => {
         const data = (await response.json()) as {
           authenticated?: boolean;
-          wallets?: unknown[];
+          wallets?: Array<{ address?: string }>;
         };
         if (active) {
-          setGoogleWalletReady(
-            Boolean(response.ok && data.authenticated && data.wallets?.length),
+          const address = data.wallets?.[0]?.address;
+          const ready = Boolean(
+            response.ok &&
+              data.authenticated &&
+              data.wallets?.length &&
+              address?.startsWith("0x"),
+          );
+          setGoogleWalletReady(ready);
+          setGoogleWalletAddress(
+            ready ? (address as `0x${string}`) : undefined,
           );
         }
       })
@@ -134,9 +145,7 @@ export function WalletButton() {
 
     setGoogleBusy(true);
     try {
-      await startCircleGoogleLogin(
-        `${window.location.pathname}${window.location.search}`,
-      );
+      await startCircleGoogleLogin("/dashboard");
     } catch (cause) {
       setGoogleWalletMessage(
         cause instanceof Error ? cause.message : "Google sign-in failed.",
@@ -199,6 +208,32 @@ export function WalletButton() {
             connectedAddress={address}
             mode={recoveryMode}
             onClose={() => setRecoveryMode(undefined)}
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  if (googleWalletReady && googleWalletAddress) {
+    return (
+      <>
+        <button
+          className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 text-[13px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+          onClick={() => setGoogleWalletModal(true)}
+          type="button"
+        >
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-black text-blue-600 shadow-sm">
+            G
+          </span>
+          Google {shortAddress(googleWalletAddress)}
+        </button>
+        {googleWalletModal ? (
+          <GoogleWalletModal
+            onClose={() => setGoogleWalletModal(false)}
+            onSignedOut={() => {
+              setGoogleWalletReady(false);
+              setGoogleWalletAddress(undefined);
+            }}
           />
         ) : null}
       </>
@@ -389,7 +424,10 @@ export function WalletButton() {
             setGoogleWalletModal(false);
             setGoogleWalletMessage(undefined);
           }}
-          onSignedOut={() => setGoogleWalletReady(false)}
+          onSignedOut={() => {
+            setGoogleWalletReady(false);
+            setGoogleWalletAddress(undefined);
+          }}
         />
       ) : null}
     </div>
