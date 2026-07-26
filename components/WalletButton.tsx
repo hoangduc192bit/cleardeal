@@ -17,11 +17,16 @@ import {
 } from "wagmi";
 
 import { arcTestnet } from "@/config/chain";
+import { GoogleWalletModal } from "@/components/GoogleWalletModal";
+import { PasskeyRecoveryModal } from "@/components/PasskeyRecoveryModal";
 import {
   isCirclePasskeyConfigured,
   isWalletConnectConfigured,
 } from "@/config/wagmi";
-import { PasskeyRecoveryModal } from "@/components/PasskeyRecoveryModal";
+import {
+  isCircleGoogleWalletConfigured,
+  startCircleGoogleLogin,
+} from "@/lib/circle-google-client";
 
 function shortAddress(address: `0x${string}`) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -45,6 +50,10 @@ export function WalletButton() {
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuClosing, setMenuClosing] = useState(false);
   const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleWalletReady, setGoogleWalletReady] = useState(false);
+  const [googleWalletModal, setGoogleWalletModal] = useState(false);
+  const [googleWalletMessage, setGoogleWalletMessage] = useState<string>();
   const [recoveryMode, setRecoveryMode] = useState<
     "backup" | "recover" | undefined
   >();
@@ -56,6 +65,49 @@ export function WalletButton() {
   }, []);
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  useEffect(() => {
+    let active = true;
+    if (!isCircleGoogleWalletConfigured) return;
+
+    void fetch("/api/wallets/google", { cache: "no-store" })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          authenticated?: boolean;
+          wallets?: unknown[];
+        };
+        if (active) {
+          setGoogleWalletReady(
+            Boolean(response.ok && data.authenticated && data.wallets?.length),
+          );
+        }
+      })
+      .catch(() => undefined);
+
+    const params = new URLSearchParams(window.location.search);
+    const googleStatus = params.get("google_wallet");
+    if (googleStatus === "ready" || googleStatus === "error") {
+      setGoogleWalletMessage(
+        googleStatus === "error"
+          ? params.get("google_wallet_message") ||
+              "Google wallet setup failed."
+          : undefined,
+      );
+      setGoogleWalletModal(true);
+      params.delete("google_wallet");
+      params.delete("google_wallet_message");
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
+      );
+    }
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function openMenu() {
     window.clearTimeout(closeTimer.current);
@@ -71,6 +123,27 @@ export function WalletButton() {
       setMenuMounted(false);
       setMenuClosing(false);
     }, 150);
+  }
+
+  async function handleGoogleWallet() {
+    if (googleWalletReady) {
+      closeMenu();
+      setGoogleWalletModal(true);
+      return;
+    }
+
+    setGoogleBusy(true);
+    try {
+      await startCircleGoogleLogin(
+        `${window.location.pathname}${window.location.search}`,
+      );
+    } catch (cause) {
+      setGoogleWalletMessage(
+        cause instanceof Error ? cause.message : "Google sign-in failed.",
+      );
+      setGoogleWalletModal(true);
+      setGoogleBusy(false);
+    }
   }
 
   const availableConnectors = useMemo(
@@ -164,6 +237,39 @@ export function WalletButton() {
           </div>
 
           <div className="mt-3 space-y-1.5">
+            {isCircleGoogleWalletConfigured ? (
+              <button
+                className="flex min-h-12 w-full cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 text-left text-[13px] font-semibold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={googleBusy}
+                onClick={handleGoogleWallet}
+                type="button"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 bg-white font-black text-blue-600 shadow-sm">
+                    G
+                  </span>
+                  {googleWalletReady
+                    ? "Google wallet ready"
+                    : "Continue with Google"}
+                </span>
+                <span className="text-[11px] text-blue-600">
+                  {googleBusy
+                    ? "Opening…"
+                    : googleWalletReady
+                      ? "View"
+                      : "Create wallet"}
+                </span>
+              </button>
+            ) : null}
+
+            {isCircleGoogleWalletConfigured ? (
+              <div className="flex items-center gap-2 px-1 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                Or use a passkey
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+            ) : null}
+
             {availableConnectors
               .filter((connector) => walletLabel(connector.name).includes("passkey"))
               .map((connector) => (
@@ -274,6 +380,16 @@ export function WalletButton() {
         <PasskeyRecoveryModal
           mode={recoveryMode}
           onClose={() => setRecoveryMode(undefined)}
+        />
+      ) : null}
+      {googleWalletModal ? (
+        <GoogleWalletModal
+          initialMessage={googleWalletMessage}
+          onClose={() => {
+            setGoogleWalletModal(false);
+            setGoogleWalletMessage(undefined);
+          }}
+          onSignedOut={() => setGoogleWalletReady(false)}
         />
       ) : null}
     </div>

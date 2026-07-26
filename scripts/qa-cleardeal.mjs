@@ -195,6 +195,7 @@ try {
   await clickByText("Sign in");
   const walletMenu = await evaluate(`({
     heading: document.body.innerText.includes('Sign in to ClearDeal'),
+    googleWallet: document.body.innerText.includes('Continue with Google'),
     passkey: document.body.innerText.includes('Create passkey account'),
     recovery: document.body.innerText.includes('Lost your passkey?'),
     browserWallet: document.body.innerText.includes('Browser Wallet'),
@@ -207,6 +208,7 @@ try {
       "No wallet sign-in option is available.",
     );
   } else {
+    assert(walletMenu.googleWallet, "Google wallet onboarding is missing.");
     assert(walletMenu.passkey, "Passkey sign-in is missing.");
     assert(walletMenu.recovery, "Passkey recovery is missing.");
     assert(walletMenu.walletConnect, "WalletConnect is missing.");
