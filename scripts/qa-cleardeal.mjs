@@ -3,26 +3,33 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-const chromePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const chromePath =
+  process.env.CHROME_PATH ??
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const port = 10_000 + Math.floor(Math.random() * 20_000);
 const outputDir = path.resolve("artifacts/qa");
 const profileDir = await mkdtemp(path.join(tmpdir(), "cleardeal-qa-"));
-const baseUrl = (process.env.CLEARDEAL_QA_BASE_URL ?? "http://127.0.0.1:3001").replace(/\/$/, "");
-const clearingCycleId = process.env.CLEARDEAL_QA_CYCLE_ID;
-const clearingInviteWallet = process.env.CLEARDEAL_QA_INVITE_WALLET;
+const baseUrl = (
+  process.env.CLEARDEAL_QA_BASE_URL ?? "http://127.0.0.1:3001"
+).replace(/\/$/, "");
+const localQa = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(baseUrl);
 const issues = [];
 
 await mkdir(outputDir, { recursive: true });
 
-const chrome = spawn(chromePath, [
-  "--headless=new",
-  `--remote-debugging-port=${port}`,
-  `--user-data-dir=${profileDir}`,
-  "--disable-gpu",
-  "--no-first-run",
-  "--no-default-browser-check",
-  "about:blank",
-], { stdio: "ignore" });
+const chrome = spawn(
+  chromePath,
+  [
+    "--headless=new",
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profileDir}`,
+    "--disable-gpu",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "about:blank",
+  ],
+  { stdio: "ignore" },
+);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -54,7 +61,10 @@ socket.addEventListener("message", (event) => {
   if (message.method === "Runtime.exceptionThrown") {
     issues.push(message.params.exceptionDetails.text);
   }
-  if (message.method === "Log.entryAdded" && ["error", "warning"].includes(message.params.entry.level)) {
+  if (
+    message.method === "Log.entryAdded" &&
+    message.params.entry.level === "error"
+  ) {
     issues.push(message.params.entry.text);
   }
   const request = pending.get(message.id);
@@ -73,66 +83,64 @@ function send(method, params = {}) {
 }
 
 async function evaluate(expression) {
-  const result = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
+  const result = await send("Runtime.evaluate", {
+    expression,
+    returnByValue: true,
+    awaitPromise: true,
+  });
   if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
   return result.result.value;
 }
 
-async function pollEvaluate(expression, attempts = 30, intervalMs = 500) {
+async function pollEvaluate(expression, attempts = 40, intervalMs = 250) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const value = await evaluate(expression);
-    if (value) return true;
+    if (await evaluate(expression)) return true;
     await delay(intervalMs);
   }
   return false;
 }
 
 async function navigate(url, width, height) {
-  await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 600 });
+  await send("Emulation.setDeviceMetricsOverride", {
+    width,
+    height,
+    deviceScaleFactor: 1,
+    mobile: width < 600,
+  });
   await send("Page.navigate", { url });
-  await delay(1800);
+  const ready = await pollEvaluate(
+    "document.readyState === 'complete' && Boolean(document.querySelector('main'))",
+  );
+  if (!ready) throw new Error(`Page did not become ready: ${url}`);
 }
 
 async function clickByText(text) {
-  const expression = `(() => {
-      const element = [...document.querySelectorAll('button, a')].find((item) => {
-        const rect = item.getBoundingClientRect();
-        return item.textContent?.trim().includes(${JSON.stringify(text)}) && rect.width > 0 && rect.height > 0;
-      });
-      if (!element) return false;
-      element.click();
-      return true;
-    })()`;
-  const clicked = await pollEvaluate(expression, 40, 250);
-  if (!clicked) {
-    const diagnostic = await evaluate(`({
-      url: location.href,
-      title: document.title,
-      body: document.body.innerText.slice(0, 500),
-      interactive: [...document.querySelectorAll('button, a')].map((item) => item.textContent?.trim()).filter(Boolean).slice(0, 30)
-    })`);
-    throw new Error(`Could not find interactive element containing: ${text}. Page: ${JSON.stringify(diagnostic)}`);
-  }
-  await delay(250);
-}
-
-async function fillByPlaceholder(placeholder, value, index = 0) {
-  const rect = await evaluate(`(() => {
-    const element = [...document.querySelectorAll('input')].filter((item) => item.placeholder === ${JSON.stringify(placeholder)})[${index}];
-    if (!element) return null;
-    const rect = element.getBoundingClientRect();
-    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  const clicked = await pollEvaluate(`(() => {
+    const element = [...document.querySelectorAll('button, a')].find((item) => {
+      const rect = item.getBoundingClientRect();
+      return item.textContent?.trim().includes(${JSON.stringify(text)}) &&
+        rect.width > 0 && rect.height > 0;
+    });
+    if (!element) return false;
+    element.click();
+    return true;
   })()`);
-  if (!rect) throw new Error(`Could not find input placeholder: ${placeholder}`);
-  await send("Input.dispatchMouseEvent", { type: "mousePressed", x: rect.x, y: rect.y, button: "left", clickCount: 1 });
-  await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: rect.x, y: rect.y, button: "left", clickCount: 1 });
-  await send("Input.insertText", { text: value });
-  await delay(100);
+  if (!clicked) throw new Error(`Could not find interactive text: ${text}`);
 }
 
 async function screenshot(filename) {
-  const result = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-  await writeFile(path.join(outputDir, filename), Buffer.from(result.data, "base64"));
+  const result = await send("Page.captureScreenshot", {
+    format: "png",
+    captureBeyondViewport: false,
+  });
+  await writeFile(
+    path.join(outputDir, filename),
+    Buffer.from(result.data, "base64"),
+  );
+}
+
+function assert(value, message) {
+  if (!value) throw new Error(message);
 }
 
 try {
@@ -141,101 +149,158 @@ try {
   await send("Log.enable");
 
   await navigate(`${baseUrl}/dashboard`, 1440, 1000);
-  const desktopInitial = await evaluate(`({
-    readyState: document.readyState,
-    heading: document.querySelector('h1')?.textContent,
-    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    loadingFallback: document.body.innerText.includes('Loading clearing workspace'),
-    containsSampleData: document.body.innerText.includes('Sample data'),
-    containsLocalDraft: document.body.innerText.includes('Local draft')
+  assert(
+    await pollEvaluate(
+      "document.querySelector('h1')?.textContent?.trim() === 'Vietnam website launch'",
+    ),
+    "The dashboard sample did not finish rendering.",
+  );
+  const dashboardDesktop = await evaluate(`({
+    heading: document.querySelector('h1')?.textContent?.trim(),
+    horizontalOverflow:
+      document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    readOnlyDemo: document.body.innerText.toLowerCase().includes('read-only demo'),
+    directTransferExplanation:
+      document.body.innerText.includes('A direct transfer only sends money'),
+    demoStory: document.body.innerText.toLowerCase().includes('three-step demo story'),
+    arcReason:
+      document.body.innerText.includes('USDC pays both the project and network fee'),
+    legacyClearingHeadline:
+      document.body.innerText.includes('Settle what everyone actually owes')
   })`);
+  assert(
+    dashboardDesktop.heading === "Vietnam website launch",
+    "The sample project did not load.",
+  );
+  assert(!dashboardDesktop.horizontalOverflow, "Desktop dashboard overflows.");
+  assert(dashboardDesktop.readOnlyDemo, "The sample is not labeled read-only.");
+  assert(
+    dashboardDesktop.directTransferExplanation,
+    "The direct-transfer explanation is missing.",
+  );
+  assert(dashboardDesktop.demoStory, "The three-step demo story is missing.");
+  assert(dashboardDesktop.arcReason, "The Arc-specific reason is missing.");
+  assert(
+    !dashboardDesktop.legacyClearingHeadline,
+    "Legacy clearing copy leaked into the primary dashboard.",
+  );
+  await screenshot("dashboard-production-desktop.png");
 
-  await clickByText("Connect Wallet");
-  await delay(800);
-  let walletMenu = await evaluate(`({
-    hasWalletConnect: document.body.innerText.includes('WalletConnect'),
-    explainsMobileWallet: document.body.innerText.includes('mobile wallet'),
-    hasWalletMenu: document.body.innerText.includes('Connect payment wallet'),
-    usesSettlementCopy: document.body.innerText.includes('settlement room') && !document.body.innerText.includes('milestone deals')
+  await clickByText("Sign in");
+  const walletMenu = await evaluate(`({
+    heading: document.body.innerText.includes('Sign in to ClearDeal'),
+    passkey: document.body.innerText.includes('Create passkey account'),
+    browserWallet: document.body.innerText.includes('Browser Wallet'),
+    walletConnect: document.body.innerText.includes('WalletConnect')
   })`);
-  if (!walletMenu.hasWalletMenu) {
-    await delay(1_000);
-    await clickByText("Connect Wallet");
-    await delay(800);
-    walletMenu = await evaluate(`({
-      hasWalletConnect: document.body.innerText.includes('WalletConnect'),
-      explainsMobileWallet: document.body.innerText.includes('mobile wallet'),
-      hasWalletMenu: document.body.innerText.includes('Connect payment wallet'),
-      usesSettlementCopy: document.body.innerText.includes('settlement room') && !document.body.innerText.includes('milestone deals')
-    })`);
+  assert(walletMenu.heading, "The wallet menu did not open.");
+  if (localQa) {
+    assert(
+      walletMenu.passkey || walletMenu.walletConnect || walletMenu.browserWallet,
+      "No wallet sign-in option is available.",
+    );
+  } else {
+    assert(walletMenu.passkey, "Passkey sign-in is missing.");
+    assert(walletMenu.walletConnect, "WalletConnect is missing.");
   }
-  if (!walletMenu.hasWalletConnect) throw new Error(`WalletConnect was not available in the wallet menu (menu open: ${walletMenu.hasWalletMenu}).`);
-  if (!walletMenu.usesSettlementCopy) throw new Error("Wallet menu still contains legacy deal copy.");
-  await clickByText("Connect Wallet");
 
-  await clickByText("New settlement room");
-  const modalOpened = await evaluate("document.querySelectorAll('[role=dialog]').length === 1");
-  if (!modalOpened) throw new Error("Create deal modal did not open.");
-  const deploymentGate = await evaluate(`({
-    wizardVisible: document.body.innerText.toUpperCase().includes('START FROM A REAL SCENARIO') && document.body.innerText.includes('Agency & contractors'),
-    showsTestnetWarning: document.body.innerText.includes('Arc Testnet only'),
-    showsPlainLanguageCopy: document.body.innerText.includes('Set up who pays whom')
+  await clickByText("Sign in");
+  await clickByText("Preview crosschain funding");
+  const crosschainModal = await evaluate(`({
+    open: document.body.innerText.includes('Bring testnet USDC to Arc'),
+    base: document.body.innerText.includes('Base Sepolia'),
+    ethereum: document.body.innerText.includes('Ethereum Sepolia'),
+    destination: document.body.innerText.includes('Arc Testnet'),
+    bridgeOnly: document.body.innerText.includes('Bridge USDC')
   })`);
-  await screenshot("deals-desktop.png");
-  await clickByText("Continue");
-  const wizardPeopleStep = await evaluate(`({
-    showsParticipants: document.body.innerText.includes('Payment participants'),
-    showsReviewers: document.body.innerText.includes('Independent reviewers'),
-    showsResolver: document.body.innerText.toUpperCase().includes('INDEPENDENT DISPUTE RESOLVER')
-  })`);
+  assert(crosschainModal.open, "The crosschain funding modal did not open.");
+  assert(
+    crosschainModal.base && crosschainModal.ethereum && crosschainModal.destination,
+    "A supported bridge network is missing.",
+  );
+  await screenshot("crosschain-funding-production.png");
 
   await navigate(`${baseUrl}/`, 390, 844);
   const landingMobile = await evaluate(`({
     heading: document.querySelector('h1')?.textContent,
-    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    bodyWidth: document.documentElement.scrollWidth,
-    viewportWidth: document.documentElement.clientWidth
+    horizontalOverflow:
+      document.documentElement.scrollWidth > document.documentElement.clientWidth
   })`);
-  await screenshot("landing-mobile.png");
+  assert(!landingMobile.horizontalOverflow, "Mobile landing page overflows.");
+  await screenshot("landing-production-mobile.png");
 
   await navigate(`${baseUrl}/dashboard`, 390, 844);
+  assert(
+    await pollEvaluate(
+      "document.querySelector('h1')?.textContent?.trim() === 'Vietnam website launch'",
+    ),
+    "The mobile dashboard sample did not finish rendering.",
+  );
   const dashboardMobile = await evaluate(`({
-    heading: document.querySelector('h1')?.textContent,
-    horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    mobileMenuVisible: Boolean(document.querySelector('[aria-label="Open workspace navigation"]')),
-    loadingFallback: document.body.innerText.includes('Loading clearing workspace')
+    heading: document.querySelector('h1')?.textContent?.trim(),
+    horizontalOverflow:
+      document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    menu: Boolean(document.querySelector('[aria-label="Open navigation"]'))
   })`);
-  await screenshot("deals-mobile.png");
+  assert(
+    dashboardMobile.heading === "Vietnam website launch",
+    "Mobile dashboard did not load the sample project.",
+  );
+  assert(!dashboardMobile.horizontalOverflow, "Mobile dashboard overflows.");
+  assert(dashboardMobile.menu, "Mobile project navigation is missing.");
+  await screenshot("dashboard-production-mobile.png");
 
-  let directCycle;
-  let roleInvite;
-  if (clearingCycleId && /^\d+$/.test(clearingCycleId)) {
-    await navigate(`${baseUrl}/dashboard?cycle=${clearingCycleId}`, 1440, 1000);
-    await pollEvaluate("Boolean(document.querySelector('main h2')) || document.body.innerText.includes('Could not read cycles')");
-    directCycle = await evaluate(`({
-      showsClearingRoom: document.body.innerText.includes('Clearing Room #${clearingCycleId}'),
-      showsCycleDetail: Boolean(document.querySelector('main h2')),
-      showsRoomLink: document.body.innerText.includes('Copy room link'),
-      readFailed: document.body.innerText.includes('Could not read cycles')
-    })`);
-    if (!directCycle.showsClearingRoom || !directCycle.showsCycleDetail || !directCycle.showsRoomLink || directCycle.readFailed) {
-      throw new Error(`Clearing Room deep link failed: ${JSON.stringify(directCycle)}`);
-    }
-    if (clearingInviteWallet && /^0x[0-9a-fA-F]{40}$/.test(clearingInviteWallet)) {
-      await navigate(`${baseUrl}/dashboard?cycle=${clearingCycleId}&role=verifier&wallet=${clearingInviteWallet}`, 1440, 1000);
-      await pollEvaluate("Boolean(document.querySelector('main h2')) || document.body.innerText.includes('Could not read cycles')");
-      roleInvite = await evaluate(`({
-        showsVerifierRole: document.body.innerText.includes('Invited as verifier'),
-        showsCycleDetail: Boolean(document.querySelector('main h2')),
-        readFailed: document.body.innerText.includes('Could not read cycles')
-      })`);
-      if (!roleInvite.showsVerifierRole || !roleInvite.showsCycleDetail || roleInvite.readFailed) {
-        throw new Error(`Role invite deep link failed: ${JSON.stringify(roleInvite)}`);
-      }
-    }
+  await navigate(`${baseUrl}/how-it-works`, 1280, 900);
+  const howItWorks = await evaluate(`({
+    heading: document.querySelector('h1')?.textContent?.trim(),
+    hasFiveSteps:
+      document.body.innerText.includes('Agree on the delivery steps') &&
+      document.body.innerText.includes('Approve and release payment'),
+    hasArcReason:
+      document.body.innerText.includes('project payment and network fee both use USDC')
+  })`);
+  assert(howItWorks.hasFiveSteps, "The complete project workflow is missing.");
+  assert(howItWorks.hasArcReason, "The Arc reason is missing from the workflow.");
+
+  const healthResponse = await fetch(`${baseUrl}/api/health`);
+  const health = await healthResponse.json();
+  if (localQa) {
+    assert(
+      health.product === "ClearDeal" &&
+        health.network?.chainId === 5_042_002 &&
+        health.checks?.canonicalUsdc === true &&
+        health.checks?.escrowBytecode === true &&
+        health.checks?.escrowUsdc === true,
+      `Local health check could not verify Arc and escrow: ${JSON.stringify(health.checks ?? health)}`,
+    );
+  } else {
+    assert(
+      healthResponse.ok && health.ready === true,
+      `Production health check is not ready: ${JSON.stringify(health.checks ?? health)}`,
+    );
   }
 
-  console.log(JSON.stringify({ desktopInitial, walletMenu, modalOpened, deploymentGate, wizardPeopleStep, landingMobile, dashboardMobile, directCycle, roleInvite, issues }, null, 2));
+  if (issues.length) {
+    throw new Error(`Browser errors detected: ${issues.join(" | ")}`);
+  }
+
+  console.log(
+    JSON.stringify(
+      {
+        baseUrl,
+        dashboardDesktop,
+        walletMenu,
+        crosschainModal,
+        landingMobile,
+        dashboardMobile,
+        howItWorks,
+        health,
+        screenshots: outputDir,
+      },
+      null,
+      2,
+    ),
+  );
 } finally {
   socket.close();
   chrome.kill();

@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { ClearDealBrand } from "@/components/cleardeal/ClearDealBrand";
 
 const groups = [
-  { title: "Product", links: [["Overview", "/#product"], ["How it works", "/#how-it-works"], ["Assurance", "/#security"], ["Clearing workspace", "/dashboard"]] },
+  { title: "Product", links: [["Overview", "/#product"], ["How it works", "/#how-it-works"], ["Protection", "/#security"], ["Project workspace", "/dashboard"]] },
   { title: "Resources", links: [["Documentation", "/docs"], ["Arc Testnet", "https://testnet.arcscan.app"], ["Circle Faucet", "https://faucet.circle.com"], ["Network status", "/arcscan"]] },
 ] as const;
 
@@ -14,7 +14,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-14 sm:px-8 md:grid-cols-[1.2fr_.8fr_.8fr_1fr]">
         <div>
           <ClearDealBrand />
-          <p className="mt-5 max-w-[250px] text-[13px] leading-6 text-slate-500">Shared USDC settlement for connected businesses, people, and agents.</p>
+          <p className="mt-5 max-w-[270px] text-[13px] leading-6 text-slate-500">Step-by-step USDC payments for international clients and Vietnamese teams.</p>
         </div>
         {groups.map((group) => (
           <div key={group.title}>

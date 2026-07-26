@@ -1,24 +1,23 @@
 import { Check, LockKeyhole } from "lucide-react";
 
-const clientPoints = ["Bound agent mandate", "Maximum loss defined", "Net debtor position"];
-const agencyPoints = ["Performance bond", "Verifier-backed outcome", "Portable risk passport"];
+const clientPoints = ["Money moves after approval", "Unpaid balance stays protected", "Every payment has a receipt"];
+const agencyPoints = ["Full budget is prepared", "Each approved step pays quickly", "Delivery proof stays attached"];
 
 export function TrustSection() {
   return (
     <section id="product" data-reveal className="reveal-on-scroll border-t border-slate-200 bg-white py-24 sm:py-28">
       <div className="mx-auto grid max-w-[1240px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
         <div>
-          <p className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-600">Why clearing matters</p>
           <h2 className="max-w-[420px] font-display text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">
-            Agents can pay. They still cannot clear risk.
+            Neither side has to take the first risk.
           </h2>
           <p className="mt-6 max-w-[460px] text-[15px] leading-7 text-slate-600">
-            Raw payments do not prove authorization, service quality, liability, or final obligation. ClearDeal turns an execution graph into verified, bonded, net-settled commercial state.
+            The client does not pay everything before seeing the work. The team does not start with only a promise of future payment.
           </p>
         </div>
 
         <div className="grid items-center gap-5 sm:grid-cols-[1fr_auto_1fr]">
-          <TrustList title="Principal control" points={clientPoints} tone="blue" />
+          <TrustList title="For the client" points={clientPoints} tone="blue" />
           <div className="hidden items-center gap-3 sm:flex" aria-hidden="true">
             <span className="h-px w-8 border-t border-dashed border-slate-300" />
             <span className="grid h-16 w-16 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
@@ -26,7 +25,7 @@ export function TrustSection() {
             </span>
             <span className="h-px w-8 border-t border-dashed border-slate-300" />
           </div>
-          <TrustList title="Provider assurance" points={agencyPoints} tone="green" />
+          <TrustList title="For the Vietnam team" points={agencyPoints} tone="green" />
         </div>
       </div>
     </section>

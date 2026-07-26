@@ -1,5 +1,27 @@
 import { keccak256, toBytes, type Address, type Hex } from "viem";
 
+export const CLEARDEAL_EVIDENCE_ALLOWED_ATTACHMENT_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "text/plain",
+] as const;
+export const CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS = 3;
+export const CLEARDEAL_EVIDENCE_MAX_ATTACHMENT_BYTES = 1_000_000;
+export const CLEARDEAL_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES = 2_000_000;
+
+export interface ClearDealEvidenceAttachment {
+  name: string;
+  contentType: typeof CLEARDEAL_EVIDENCE_ALLOWED_ATTACHMENT_TYPES[number];
+  size: number;
+  sha256: Hex;
+}
+
+export interface ClearDealEvidenceAttachmentPayload {
+  sha256: Hex;
+  dataBase64: string;
+}
+
 export type ClearDealEvidenceKind = "milestone_submission" | "dispute" | "resolution";
 
 export interface ClearDealEvidence {
@@ -9,6 +31,7 @@ export interface ClearDealEvidence {
   milestoneId?: string;
   reference: string;
   submittedAt: number;
+  attachments?: ClearDealEvidenceAttachment[];
 }
 
 export interface StoreClearDealEvidenceAuthorization {
@@ -26,9 +49,11 @@ export interface StoredClearDealEvidence {
   signerAddress: Address;
   signature: Hex;
   storedAt: number;
+  attachmentPayloads?: ClearDealEvidenceAttachmentPayload[];
 }
 
 export const CLEARDEAL_EVIDENCE_AUTHORIZATION_TTL_MS = 5 * 60 * 1_000;
+const SHA256_PATTERN = /^0x[a-fA-F0-9]{64}$/;
 
 function normalizeUint(value: unknown) {
   if (typeof value !== "string" || !/^(0|[1-9]\d*)$/.test(value) || value.length > 78) return null;
@@ -38,6 +63,24 @@ function normalizeUint(value: unknown) {
   } catch {
     return null;
   }
+}
+
+function normalizeAttachment(value: unknown): ClearDealEvidenceAttachment | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Partial<ClearDealEvidenceAttachment>;
+  const name = typeof input.name === "string" ? input.name.trim() : "";
+  const contentType = typeof input.contentType === "string" ? input.contentType : "";
+  const size = typeof input.size === "number" ? input.size : 0;
+  const sha256 = typeof input.sha256 === "string" ? input.sha256.toLowerCase() : "";
+  if (!name || name.length > 120 || name.includes("/") || name.includes("\\") || /[\u0000-\u001f]/.test(name)) return null;
+  if (!["application/pdf", "image/jpeg", "image/png", "text/plain"].includes(contentType)) return null;
+  if (!Number.isSafeInteger(size) || size < 1 || size > 1_000_000 || !SHA256_PATTERN.test(sha256)) return null;
+  return {
+    name,
+    contentType: contentType as ClearDealEvidenceAttachment["contentType"],
+    size,
+    sha256: sha256 as Hex,
+  };
 }
 
 export function normalizeClearDealEvidence(value: unknown): ClearDealEvidence | null {
@@ -52,7 +95,25 @@ export function normalizeClearDealEvidence(value: unknown): ClearDealEvidence | 
   if (input.milestoneId !== undefined && milestoneId === null) return null;
   if (kind === "milestone_submission" && milestoneId === undefined) return null;
   if (kind !== "milestone_submission" && input.milestoneId !== undefined) return null;
-  return { version: 1, kind: kind as ClearDealEvidenceKind, dealId, milestoneId: milestoneId ?? undefined, reference, submittedAt: input.submittedAt as number };
+  if (input.attachments !== undefined && !Array.isArray(input.attachments)) return null;
+  const attachments = Array.isArray(input.attachments)
+    ? input.attachments.map(normalizeAttachment)
+    : [];
+  if (attachments.length > 3 || attachments.some((attachment) => !attachment)) return null;
+  const normalized = attachments as ClearDealEvidenceAttachment[];
+  if (
+    normalized.reduce((sum, attachment) => sum + attachment.size, 0) > 2_000_000 ||
+    new Set(normalized.map((attachment) => attachment.sha256)).size !== normalized.length
+  ) return null;
+  return {
+    version: 1,
+    kind: kind as ClearDealEvidenceKind,
+    dealId,
+    milestoneId: milestoneId ?? undefined,
+    reference,
+    submittedAt: input.submittedAt as number,
+    ...(normalized.length ? { attachments: normalized } : {}),
+  };
 }
 
 export function serializeClearDealEvidence(evidence: ClearDealEvidence) {
@@ -63,6 +124,7 @@ export function serializeClearDealEvidence(evidence: ClearDealEvidence) {
     milestoneId: evidence.milestoneId ?? null,
     reference: evidence.reference,
     submittedAt: evidence.submittedAt,
+    ...(evidence.attachments?.length ? { attachments: evidence.attachments } : {}),
   });
 }
 

@@ -1,18 +1,17 @@
-import { Check, FileText, Network } from "lucide-react";
+import { Check, FileText, WalletCards } from "lucide-react";
 
 const steps = [
-  { number: "01", icon: FileText, title: "Record connected payments", text: "Add who should pay whom, what work is expected, the USDC amount, and the deadline." },
-  { number: "02", icon: Check, title: "Approve completed work", text: "Providers submit proof and independent reviewers approve or reject it against clear rules." },
-  { number: "03", icon: Network, title: "Pay only final balances", text: "ClearDeal offsets approved payments and moves only the remaining USDC difference on Arc." },
+  { number: "01", icon: WalletCards, title: "Prepare the project money", text: "The client deposits the complete USDC budget once, so the team knows payment is ready." },
+  { number: "02", icon: FileText, title: "Deliver one step", text: "The team uploads a delivery note and sample files for the client to review." },
+  { number: "03", icon: Check, title: "Approve and pay", text: "When the client approves that step, ClearDeal releases only its agreed USDC amount." },
 ] as const;
 
 export function DealFlowSection() {
   return (
     <section id="how-it-works" data-reveal className="reveal-on-scroll border-t border-slate-200 py-24 sm:py-28">
       <div className="mx-auto max-w-[1240px] px-5 sm:px-8">
-        <p className="text-center font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-600">Three clear steps</p>
-        <h2 className="mx-auto mt-4 max-w-3xl text-center font-display text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
-          Record every payment. Move only the difference.
+        <h2 className="mx-auto max-w-3xl text-center font-display text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
+          One project. Three simple actions.
         </h2>
         <div className="mt-16 grid gap-10 lg:grid-cols-3">
           {steps.map(({ number, icon: Icon, title, text }, index) => (

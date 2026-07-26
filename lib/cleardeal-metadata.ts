@@ -3,6 +3,7 @@ import { keccak256, toBytes, type Address, type Hex } from "viem";
 export interface ClearDealMetadata {
   version: 1;
   client: string;
+  team?: string;
   title: string;
   milestones: Array<{
     title: string;
@@ -23,8 +24,9 @@ export function normalizeDealMetadata(value: unknown): ClearDealMetadata | null 
   if (!value || typeof value !== "object") return null;
   const input = value as Partial<ClearDealMetadata>;
   const client = typeof input.client === "string" ? input.client.trim() : "";
+  const team = typeof input.team === "string" ? input.team.trim() : "";
   const title = typeof input.title === "string" ? input.title.trim() : "";
-  if (input.version !== 1 || !client || client.length > 80 || !title || title.length > 120) return null;
+  if (input.version !== 1 || !client || client.length > 80 || team.length > 80 || !title || title.length > 120) return null;
   if (!Array.isArray(input.milestones) || input.milestones.length === 0 || input.milestones.length > 20) return null;
 
   const milestones = input.milestones.map((milestone) => {
@@ -38,6 +40,7 @@ export function normalizeDealMetadata(value: unknown): ClearDealMetadata | null 
   return {
     version: 1,
     client,
+    ...(team ? { team } : {}),
     title,
     milestones: milestones as ClearDealMetadata["milestones"],
   };
@@ -47,6 +50,7 @@ export function serializeDealMetadata(metadata: ClearDealMetadata) {
   return JSON.stringify({
     version: 1,
     client: metadata.client,
+    ...(metadata.team ? { team: metadata.team } : {}),
     title: metadata.title,
     milestones: metadata.milestones.map((milestone) => ({
       title: milestone.title,

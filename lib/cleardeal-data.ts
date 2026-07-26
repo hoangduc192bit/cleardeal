@@ -16,6 +16,7 @@ export interface ClearDealMilestone {
 export interface ClearDealRecord {
   id: bigint;
   client: string;
+  team: string;
   title: string;
   buyer: Address;
   seller: Address;

@@ -6,6 +6,7 @@ import { isAddress } from "viem";
 
 export interface CreateDealInput {
   client: string;
+  team: string;
   title: string;
   seller: `0x${string}`;
   arbitrator: `0x${string}`;
@@ -29,14 +30,16 @@ function dateAfter(days: number) {
 
 export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onClose, onCreate }: Props) {
   const [client, setClient] = useState("");
+  const [team, setTeam] = useState("");
   const [title, setTitle] = useState("");
   const [seller, setSeller] = useState("");
   const [arbitrator, setArbitrator] = useState("");
   const [refundDeadline, setRefundDeadline] = useState(dateAfter(45));
   const [formError, setFormError] = useState<string>();
   const [milestones, setMilestones] = useState([
-    { title: "Project kickoff", amount: "500", dueDate: dateAfter(14) },
-    { title: "Final delivery", amount: "500", dueDate: dateAfter(30) },
+    { title: "Brand design", amount: "200", dueDate: dateAfter(10) },
+    { title: "Website build", amount: "500", dueDate: dateAfter(24) },
+    { title: "Source handoff", amount: "300", dueDate: dateAfter(35) },
   ]);
 
   const total = useMemo(() => milestones.reduce((sum, milestone) => sum + (Number(milestone.amount) || 0), 0), [milestones]);
@@ -47,23 +50,25 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
     setFormError(undefined);
     if (disabledReason) return setFormError(disabledReason);
     if (!ownerAddress) return setFormError("Connect the buyer wallet first.");
-    if (!isAddress(seller) || !isAddress(arbitrator)) return setFormError("Seller and arbitrator must be valid EVM addresses.");
-    if (seller.toLowerCase() === ownerAddress.toLowerCase()) return setFormError("Buyer and seller must use different wallets.");
+    if (!team.trim()) return setFormError("Add the team name.");
+    if (!isAddress(seller) || !isAddress(arbitrator)) return setFormError("Add valid team and dispute-helper wallet addresses.");
+    if (seller.toLowerCase() === ownerAddress.toLowerCase()) return setFormError("The client and team must use different wallets.");
     if (arbitrator.toLowerCase() === ownerAddress.toLowerCase() || arbitrator.toLowerCase() === seller.toLowerCase()) {
-      return setFormError("The arbitrator must be independent from buyer and seller.");
+      return setFormError("The dispute helper must use a wallet separate from the client and team.");
     }
     const refundAt = Date.parse(`${refundDeadline}T23:59:59Z`);
     const dueDates = milestones.map((milestone) => Date.parse(`${milestone.dueDate}T23:59:59Z`));
     if (!Number.isFinite(refundAt) || dueDates.some((dueAt) => !Number.isFinite(dueAt) || dueAt <= Date.now() || dueAt >= refundAt)) {
-      return setFormError("Every milestone must be in the future and before the refund deadline.");
+      return setFormError("Every delivery step must be in the future and before the refund deadline.");
     }
     if (total <= 0 || milestones.some((milestone) => !milestone.title.trim() || Number(milestone.amount) <= 0)) {
-      return setFormError("Every milestone needs a title and a positive USDC amount.");
+      return setFormError("Every delivery step needs a title and a positive USDC amount.");
     }
 
     try {
       await onCreate({
         client: client.trim(),
+        team: team.trim(),
         title: title.trim(),
         seller,
         arbitrator,
@@ -80,21 +85,22 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-deal-title">
       <form onSubmit={submit} className="cd-scrollbar max-h-[92dvh] w-full max-w-[760px] overflow-y-auto border border-white/[0.14] bg-[#090f16] shadow-[0_30px_120px_rgba(0,0,0,.7)]">
         <div className="flex items-start justify-between border-b border-white/[0.1] p-6">
-          <div><h2 id="create-deal-title" className="text-2xl font-semibold tracking-[-0.03em] text-white">Create an onchain deal</h2><p className="mt-2 text-[13px] text-white/42">Metadata is wallet-signed, hashed, and anchored to ClearDealEscrow on Arc Testnet.</p></div>
+          <div><h2 id="create-deal-title" className="font-display text-3xl tracking-[-0.03em] text-white">Create a protected project</h2><p className="mt-2 text-[13px] text-white/42">Set the work, price, and delivery steps. ClearDeal pays each step only after approval.</p></div>
           <button type="button" disabled={busy} onClick={onClose} className="grid h-9 w-9 place-items-center border border-white/[0.1] text-white/50 hover:text-white disabled:opacity-40" aria-label="Close create deal"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="grid gap-5 p-6 sm:grid-cols-2">
-          <Field label="Client name"><input required maxLength={80} value={client} onChange={(event) => setClient(event.target.value)} placeholder="Acme Commerce" className="cd-input" /></Field>
-          <Field label="Deal title"><input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Commerce website" className="cd-input" /></Field>
-          <Field label="Seller wallet"><input required value={seller} onChange={(event) => setSeller(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
-          <Field label="Independent arbitrator"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
+          <Field label="Client name"><input required maxLength={80} value={client} onChange={(event) => setClient(event.target.value)} placeholder="Northstar Studio" className="cd-input" /></Field>
+          <Field label="Vietnam team"><input required maxLength={80} value={team} onChange={(event) => setTeam(event.target.value)} placeholder="Saigon Digital" className="cd-input" /></Field>
+          <Field label="Project title"><input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Vietnam website launch" className="cd-input" /></Field>
+          <Field label="Team payment wallet"><input required value={seller} onChange={(event) => setSeller(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
+          <Field label="Independent dispute helper"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
           <Field label="Refund deadline"><input required type="date" min={dateAfter(2)} value={refundDeadline} onChange={(event) => setRefundDeadline(event.target.value)} className="cd-input" /></Field>
-          <div className="border border-amber-400/15 bg-amber-400/[0.05] p-4 text-[11px] leading-5 text-amber-100/60">All role addresses and amounts become public blockchain data. Use Arc Testnet wallets and faucet USDC only; the contract is not professionally audited.</div>
+          <div className="border border-amber-400/15 bg-amber-400/[0.05] p-4 text-[11px] leading-5 text-amber-100/60">Arc Testnet only. Wallets and amounts are public, and test USDC has no real-world value.</div>
         </div>
 
         <div className="border-t border-white/[0.1] p-6">
-          <div className="flex items-center justify-between"><div><h3 className="text-sm font-semibold text-white">Milestones</h3><p className="mt-1 text-[12px] text-white/36">Each milestone releases separately to the seller wallet.</p></div><strong className="font-mono text-sm text-white">{total.toLocaleString()} USDC</strong></div>
+          <div className="flex items-center justify-between"><div><h3 className="text-sm font-semibold text-white">Delivery steps</h3><p className="mt-1 text-[12px] text-white/36">Each approved step pays separately to the team wallet.</p></div><strong className="font-mono text-sm text-white">{total.toLocaleString()} USDC</strong></div>
           <div className="mt-5 space-y-3">
             {milestones.map((milestone, index) => (
               <div key={index} className="grid gap-3 border border-white/[0.09] bg-white/[0.02] p-4 sm:grid-cols-[1fr_140px_160px_auto]">
@@ -105,13 +111,13 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
               </div>
             ))}
           </div>
-          <button type="button" disabled={milestones.length >= 20 || busy} onClick={() => setMilestones((current) => [...current, { title: "", amount: "", dueDate: dateAfter(30) }])} className="mt-4 inline-flex items-center gap-2 text-[12px] font-semibold text-blue-400 hover:text-blue-300 disabled:opacity-40"><Plus className="h-4 w-4" /> Add milestone</button>
+          <button type="button" disabled={milestones.length >= 20 || busy} onClick={() => setMilestones((current) => [...current, { title: "", amount: "", dueDate: dateAfter(30) }])} className="mt-4 inline-flex items-center gap-2 text-[12px] font-semibold text-blue-400 hover:text-blue-300 disabled:opacity-40"><Plus className="h-4 w-4" /> Add delivery step</button>
         </div>
 
         {formError ? <p className="mx-6 border border-rose-400/20 bg-rose-400/[0.07] px-4 py-3 text-[12px] text-rose-200" role="alert">{formError}</p> : null}
         <div className="flex flex-col-reverse gap-3 border-t border-white/[0.1] p-6 sm:flex-row sm:justify-end">
           <button type="button" disabled={busy} onClick={onClose} className="min-h-11 border border-white/[0.12] px-5 text-[13px] font-semibold text-white/62 hover:text-white disabled:opacity-40">Cancel</button>
-          <button type="submit" disabled={busy || Boolean(disabledReason)} className="min-h-11 bg-blue-600 px-5 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-45">{busy ? "Waiting for wallet…" : "Sign & create on Arc"}</button>
+          <button type="submit" disabled={busy || Boolean(disabledReason)} className="min-h-11 bg-blue-600 px-5 text-[13px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-45">{busy ? "Waiting for wallet…" : "Sign & create project"}</button>
         </div>
       </form>
     </div>

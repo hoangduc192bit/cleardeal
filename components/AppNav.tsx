@@ -12,8 +12,7 @@ import { WalletButton } from "@/components/WalletButton";
 const links = [
   ["Product", "/"],
   ["How it works", "/how-it-works"],
-  ["Company spend", "/dashboard"],
-  ["Clearing proof", "/clearing"],
+  ["Projects", "/dashboard"],
   ["Docs", "/docs"],
 ] as const;
 

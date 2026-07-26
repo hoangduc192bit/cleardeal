@@ -94,6 +94,7 @@ export function useClearDeals(participant?: Address) {
         return {
           id: dealId,
           client: metadata?.client ?? shortFallback(buyer),
+          team: metadata?.team ?? shortFallback(seller),
           title: metadata?.title ?? `Deal #${dealId}`,
           buyer,
           seller,

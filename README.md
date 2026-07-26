@@ -1,85 +1,91 @@
 # ClearDeal
 
-ClearDeal is approval-controlled company spending on Arc. Employees request
-vendor payments, managers approve a budget, the requester adds signed invoice
-or delivery evidence, and Finance releases USDC only after every control has
-passed. The final payment carries an Arc transaction memo for reconciliation.
+ClearDeal helps an international client pay a Vietnamese team safely, one
+approved delivery at a time.
 
-The original multilateral clearing proof remains available at `/clearing`.
-Participants can still commit connected USDC obligations and settle only their
-final net positions through `ClearDealClearingHouse`.
+The client creates a project, divides the budget into clear delivery steps,
+and deposits the full USDC amount once. The team submits each completed
+delivery with a signed note and optional sample files. The client reviews the
+result and releases only that step's payment. Unreleased USDC stays in the
+verified ClearDeal contract on Arc Testnet.
 
-ClearDeal is an independent product built on Arc. Arc is the settlement infrastructure and does not imply endorsement by Circle.
-
-## Release truth
-
-- `ClearDealTreasury` runs the complete request -> manager approval -> evidence
-  -> finance payment workflow on Arc Testnet.
-- Finance pays the vendor through Arc's native Memo contract, preserving the
-  Finance EOA as `msg.sender` and recording a searchable expense reference.
-- Employees and managers can use Circle Modular Wallet passkeys; Arc Memo
-  currently requires the final Finance transaction to come from an EOA.
-- Public Testnet files are intentionally limited to sample invoice and delivery
-  evidence. Confidential and salary data must not be uploaded.
-- Real wallet signatures and Arc Testnet contract reads/writes; no browser-only financial state.
-- Role-indexed cycles for economic participants, verifiers, and arbitrators.
-- Shareable Clearing Room and role-bound invite links that load public cycle state before wallet connection.
-- Provider USDC performance bonds with pass return and failure slashing.
-- Wallet-signed public metadata and evidence stored in durable KV and anchored by `bytes32` hashes.
-- Configurable verifier quorum plus independent arbitrator deadlock resolution.
-- Multilateral net positions calculated from passed obligations only.
-- Exact net-debtor funding followed by one batch settlement transaction.
-- Fail-closed deadlines and onchain debtor default history.
-- Risk passports derived from settled/defaulted contract state.
-- Browser reads use a rate-limited, read-only RPC proxy plus bounded retry/queue behavior; wallet providers still own transaction signing.
-- Arc Testnet only. Faucet USDC has no real-world value.
-- Custom contracts are tested and source-verified, but not professionally audited.
-
-## Clearing lifecycle
+Example:
 
 ```text
-Creator signs public cycle terms
-  -> creates participant, verifier, and obligation graph onchain
-  -> providers post USDC performance bonds
-  -> providers sign and submit evidence references
-  -> independent verifiers reach pass/fail quorum
-  -> arbitrator can resolve a verifier deadlock
-  -> contract removes failed obligations and computes net positions
-  -> net debtors fund only the calculated difference
-  -> one transaction pays net creditors and distributes bonds
-  -> risk passports record passes, failures, funding, slashing, and defaults
+Vietnam website launch — 1,000 USDC
+
+Brand design     200 USDC  -> approved and paid
+Website build    500 USDC  -> delivered, waiting for the client
+Source handoff   300 USDC  -> upcoming
 ```
 
-Example: A owes B 100 USDC, B owes C 90, and C owes A 80. Cleared gross is 270 USDC; the final net debit is 20 USDC, saving 250 USDC of settlement liquidity.
+This gives both sides a simple promise:
 
-A public six-wallet Arc Testnet run completed the same topology at smaller test amounts: [Cycle #0](https://cleardeal-app.vercel.app/clearing?cycle=0) cleared `0.27 USDC` gross into `0.02 USDC` net settlement and saved `0.25 USDC` of liquidity.
+- The client does not pay the whole project before seeing the work.
+- The team can see that the complete budget has already been prepared.
+- Payment moves directly to the team after the client approves a delivery.
+- If there is a serious disagreement, an independent wallet can divide the
+  unpaid balance between the two sides.
 
-## Company spend lifecycle
+ClearDeal is an independent product built on Arc. Arc is the settlement
+infrastructure and does not imply endorsement by Circle.
+
+## Why Arc
+
+- USDC is both the project money and Arc's network-fee currency, so users do
+  not need a second volatile token just to approve or receive payment.
+- Each delivery approval becomes a fast, public payment receipt.
+- The same stable unit is used for the budget, held balance, and final payout.
+- Wallets retain signing authority; the ClearDeal server cannot move funds.
+- Circle App Kit can bridge testnet USDC from Base Sepolia or Ethereum Sepolia
+  into the client's Arc Testnet wallet before project funding.
+
+## Project flow
 
 ```text
-Employee signs an expense request
-  -> manager approves or rejects the budget
-  -> employee signs the final invoice and sample delivery evidence
-  -> contract locks the exact payable amount at or below the budget
-  -> Finance reviews the evidence
-  -> Finance EOA sends one Arc Memo transaction
-  -> ClearDealTreasury transfers USDC directly to the vendor
-  -> expense, evidence hash, memo ID, and payment remain publicly auditable
+Client creates project and delivery steps
+  -> client uses Arc USDC or bridges testnet USDC into Arc
+  -> client deposits the complete USDC budget
+  -> Vietnamese team submits one completed delivery
+  -> delivery note and sample files are tied to a wallet signature
+  -> client reviews the delivery
+  -> client approves and the contract pays that step
+  -> remaining USDC stays held for later steps
+  -> project completes, refunds the remainder, or enters dispute resolution
 ```
 
-## Arc configuration
+The primary product is available at `/dashboard`. `/how-it-works` explains the
+flow in plain language, and `/docs` describes the public Testnet boundary.
+
+The earlier company-spend and multilateral-clearing proofs remain in the
+repository and at their direct routes for historical demonstration, but they
+are no longer the main ClearDeal story.
+
+## Arc Testnet configuration
 
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Canonical USDC: `0x3600000000000000000000000000000000000000`
-- ClearingHouse: `0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4`
-- Deployment block: `52623933`
-- Treasury: `0x596c87B47B0557ae1226208914888C2872736dc2`
-- Treasury deployment block: `53217435`
-- Verified ClearingHouse: [ArcScan](https://testnet.arcscan.app/address/0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4#code)
-- Verified Treasury: [ArcScan](https://testnet.arcscan.app/address/0x596c87B47B0557ae1226208914888C2872736dc2#code)
+- ClearDealEscrow: `0x3488b4612a5ea84d56a5b41ac53ab7616213444a`
+- Escrow deployment block: `52593658`
+- [Verified ClearDealEscrow on ArcScan](https://testnet.arcscan.app/address/0x3488b4612a5ea84d56a5b41ac53ab7616213444a#code)
+- [Completed end-to-end Arc Testnet proof](docs/TESTNET-PROOF.md)
 
-Use the canonical 6-decimal ERC-20 view for balances, approvals, bonds, and settlement. Arc gas uses the 18-decimal native view of the same underlying USDC balance; never add the two views.
+The contract supports project creation, complete-budget funding, delivery
+submission, step-by-step release, refunds after a deadline, and independent
+dispute resolution.
+
+## Crosschain testnet funding
+
+The project funding screen uses Circle App Kit to bridge **USDC only** from
+Base Sepolia or Ethereum Sepolia to the same wallet on Arc Testnet. A browser
+wallet or WalletConnect account signs the source-chain transactions. Circle
+passkey accounts remain Arc-only in this build.
+
+App Kit currently does not support token swaps on Base Sepolia or Ethereum
+Sepolia. ClearDeal displays that limitation instead of presenting a fake
+testnet swap. Test ETH and other source-testnet tokens must not be represented
+as convertible through this flow.
 
 ## Required configuration
 
@@ -87,10 +93,8 @@ Use the canonical 6-decimal ERC-20 view for balances, approvals, bonds, and sett
 NEXT_PUBLIC_APP_URL=https://your-domain.example
 NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.network
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
-NEXT_PUBLIC_CLEARING_HOUSE_ADDRESS=0x0B917A65F186cbf1Cb59694695f4930B16bcAAf4
-NEXT_PUBLIC_CLEARING_DEPLOYMENT_BLOCK=52623933
-NEXT_PUBLIC_CLEARDEAL_TREASURY_ADDRESS=0x596c87B47B0557ae1226208914888C2872736dc2
-NEXT_PUBLIC_CLEARDEAL_TREASURY_DEPLOYMENT_BLOCK=53217435
+NEXT_PUBLIC_CLEARDEAL_ESCROW_ADDRESS=0x3488b4612a5ea84d56a5b41ac53ab7616213444a
+NEXT_PUBLIC_CLEARDEAL_DEPLOYMENT_BLOCK=52593658
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_KEY=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_URL=...
@@ -98,14 +102,12 @@ KV_REST_API_URL=https://...
 KV_REST_API_TOKEN=...
 ```
 
-The two Circle Modular Wallets values enable ClearDeal's optional passkey path.
-Allow the production domain in the Circle Console passkey settings before
-deploying. The integration creates a user-controlled Circle smart account on
-Arc Testnet and sends contract actions through Circle's bundler with Paymaster
-enabled. If either value is absent, ClearDeal fails closed and keeps the
-browser-wallet and WalletConnect fallbacks available.
+The Circle values enable the optional passkey sign-in path. If they are not
+configured, browser-wallet and WalletConnect paths remain available. The KV
+store holds wallet-signed project descriptions and sample delivery files; only
+their hashes are tied to the contract.
 
-Deployment values remain server-only:
+Server-only deployment values:
 
 ```bash
 ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
@@ -113,7 +115,7 @@ DEPLOYER_PRIVATE_KEY=0x...
 USDC_ADDRESS=0x3600000000000000000000000000000000000000
 ```
 
-Never commit `.env`, wallet keys, or provider tokens.
+Never commit `.env`, private keys, or provider tokens.
 
 ## Development and verification
 
@@ -123,28 +125,51 @@ npm run dev
 npm run lint
 npm run build
 npm run test:contracts
-npm run qa:cleardeal
-npm run e2e:clearing:testnet
-npm run e2e:treasury:testnet
+npm run e2e:cleardeal:testnet
 ```
 
-The E2E command is dry-run by default. `CLEARDEAL_E2E_EXECUTE=true` enables one public Arc Testnet run with a hard funding cap; `CLEARDEAL_E2E_CYCLE_ID=<id>` safely resumes a matching interrupted run. It must never be used on mainnet.
+The Testnet E2E command is a dry run by default: it checks the Arc chain,
+deployed escrow bytecode, canonical USDC binding, and the configured public app
+without spending funds.
 
-Deploy a new Testnet instance only after reviewing the gas preview and funding a dedicated deployer with faucet USDC:
+Run the production UI smoke test against a local production build:
+
+```powershell
+# Terminal 1
+npm run build
+npm run start -- -p 3001
+
+# Terminal 2
+$env:CLEARDEAL_QA_BASE_URL="http://127.0.0.1:3001"
+npm run qa:cleardeal
+```
+
+To create a public, end-to-end Arc Testnet proof after deployment:
+
+```powershell
+$env:CLEARDEAL_E2E_APP_URL="https://cleardeal-app.vercel.app"
+$env:CLEARDEAL_E2E_EXECUTE="true"
+npm run e2e:cleardeal:testnet
+```
+
+The proof run creates and completes one 0.02 Testnet USDC milestone, plus Arc
+network fees. Its transactions are permanent and public on Arc Testnet. Never
+commit or print the deployer private key.
+
+Deploy a new Testnet escrow only after reviewing the gas preview and funding a
+dedicated deployer with faucet USDC:
 
 ```bash
-npm run deploy:clearing:testnet
-npm run deploy:treasury:testnet
+npm run deploy:cleardeal:testnet
 ```
 
-`GET /api/health` verifies RPC reachability, canonical USDC, deployed ClearingHouse bytecode and USDC binding, app URL, and durable signed-record storage. It returns `503` until every production dependency is ready.
+## Public Testnet boundary
 
-## Security boundary
-
-- Wallets retain all signing authority; the server never receives private keys. Passkey accounts require device confirmation for signatures.
-- Metadata/evidence signatures publish public records but cannot move USDC.
-- `/api/arc-rpc` permits only read and estimation methods, rejects raw transaction submission, and applies durable per-IP rate limits.
-- Bonds and net-position deposits are held by the contract, not the web server.
-- Every token approval and contract write requires explicit wallet confirmation and a successful receipt.
-- Arc Privacy is roadmap only and is never represented as a live confidentiality feature.
-- A professional Solidity audit, legal review, incident plan, and mainnet-specific deployment are required before valuable assets.
+- Arc Testnet USDC has no real-world value.
+- Project amounts, wallet addresses, hashes, and payment results are public.
+- Upload only sample files without personal, salary, or confidential client
+  information.
+- The product is not audited for mainnet use.
+- Arc Privacy is roadmap only and is not represented as a live feature.
+- Real VND bank withdrawal is not included; any VND or VietQR screen remains a
+  clearly labeled mock until a licensed partner is integrated.

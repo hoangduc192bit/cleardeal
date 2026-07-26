@@ -1,10 +1,10 @@
 import { FileCheck2, LockKeyhole, RefreshCcw, ShieldCheck } from "lucide-react";
 
 const features = [
-  { icon: LockKeyhole, title: "Performance bonds", text: "Providers put USDC behind their promise. Failed outcomes slash the posted bond to the payer." },
-  { icon: ShieldCheck, title: "Independent quorum", text: "Economic participants cannot serve as verifiers in the same clearing cycle." },
-  { icon: RefreshCcw, title: "Fail-closed deadlines", text: "Missing evidence fails the obligation; missing debtor funding defaults the cycle without trapping deposits." },
-  { icon: FileCheck2, title: "Risk passports", text: "Passes, failures, slashed bonds, funding, and defaults are derived from settled onchain outcomes." },
+  { icon: LockKeyhole, title: "Money is prepared", text: "The complete project budget is deposited before work is paid step by step." },
+  { icon: ShieldCheck, title: "Client approval matters", text: "A delivery cannot pay itself. The client wallet must approve the completed step." },
+  { icon: RefreshCcw, title: "Unpaid money can return", text: "The agreement includes a deadline and a path to return money that has not been paid." },
+  { icon: FileCheck2, title: "Proof stays connected", text: "Delivery notes, sample files, approvals, and payment receipts remain connected to the same project." },
 ] as const;
 
 export function SecuritySection() {
@@ -12,9 +12,8 @@ export function SecuritySection() {
     <section data-reveal className="reveal-on-scroll border-t border-slate-200 bg-white py-24 sm:py-28">
       <div className="mx-auto grid max-w-[1240px] gap-12 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr]">
         <div>
-          <p className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-600">Built for accountability</p>
-          <h2 className="max-w-[420px] font-display text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">Commercial trust with financial consequences.</h2>
-          <p className="mt-6 max-w-[400px] text-[14px] leading-7 text-slate-600">Verification changes balances. Defaults change risk history. Every claim can be audited.</p>
+          <h2 className="max-w-[420px] font-display text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">Clear rules before anyone starts.</h2>
+          <p className="mt-6 max-w-[400px] text-[14px] leading-7 text-slate-600">Both sides can see what must be delivered, when it is due, and how much will be paid.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {features.map(({ icon: Icon, title, text }) => (

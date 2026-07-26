@@ -29,7 +29,7 @@ export function LandingNav() {
           ))}
         </nav>
         <Link href="/dashboard" className="hidden min-h-10 items-center rounded-lg bg-blue-600 px-5 text-[12px] font-semibold !text-white transition-colors hover:bg-blue-500 md:inline-flex">
-          Open rooms
+          Open projects
         </Link>
         <button type="button" onClick={() => setOpen((value) => !value)} className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 md:hidden" aria-label={open ? "Close menu" : "Open menu"}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -40,7 +40,7 @@ export function LandingNav() {
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-200 bg-white p-5 shadow-xl md:hidden">
             <nav className="grid gap-1">
               {links.map(([label, href]) => <Link key={label} href={href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-950">{label}</Link>)}
-              <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-semibold !text-white">Open settlement rooms</Link>
+              <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-semibold !text-white">Open projects</Link>
             </nav>
           </motion.div>
         ) : null}

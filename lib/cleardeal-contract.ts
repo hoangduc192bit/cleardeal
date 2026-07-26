@@ -1,19 +1,23 @@
 import { isAddress, type Address } from "viem";
 
 export const ARC_TESTNET_USDC_ADDRESS = "0x3600000000000000000000000000000000000000" as const;
+export const ARC_TESTNET_CLEARDEAL_ESCROW_ADDRESS =
+  "0x3488b4612a5ea84d56a5b41ac53ab7616213444a" as const;
 
 const configuredAddress = process.env.NEXT_PUBLIC_CLEARDEAL_ESCROW_ADDRESS?.trim();
 const configuredUsdcAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS?.trim();
 
-export const clearDealEscrowAddress: Address | undefined =
-  configuredAddress && isAddress(configuredAddress) ? configuredAddress : undefined;
+export const clearDealEscrowAddress: Address =
+  configuredAddress && isAddress(configuredAddress)
+    ? configuredAddress
+    : ARC_TESTNET_CLEARDEAL_ESCROW_ADDRESS;
 
 export const clearDealUsdcAddress: Address =
   configuredUsdcAddress && isAddress(configuredUsdcAddress)
     ? configuredUsdcAddress
     : ARC_TESTNET_USDC_ADDRESS;
 
-export const clearDealEscrowConfigured = Boolean(clearDealEscrowAddress);
+export const clearDealEscrowConfigured = true;
 
 const configuredDeploymentBlock = process.env.NEXT_PUBLIC_CLEARDEAL_DEPLOYMENT_BLOCK?.trim();
 export const clearDealDeploymentBlock = configuredDeploymentBlock && /^\d+$/.test(configuredDeploymentBlock)

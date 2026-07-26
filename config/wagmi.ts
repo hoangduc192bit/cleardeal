@@ -1,5 +1,6 @@
 import { createConfig, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
+import { baseSepolia, sepolia } from "viem/chains";
 
 import { arcTestnet } from "@/config/chain";
 import { circlePasskeyConnector } from "@/config/circle-passkey-connector";
@@ -36,7 +37,7 @@ function createWagmiConfig() {
       showQrModal: true,
       metadata: {
         name: "ClearDeal",
-        description: "Approval-controlled company spending in USDC on Arc Testnet",
+        description: "Approval-controlled project payments in USDC on Arc Testnet",
         url: process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://cleardeal-app.vercel.app",
         icons: [`${process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://cleardeal-app.vercel.app"}/logo-192.png`],
       },
@@ -44,10 +45,12 @@ function createWagmiConfig() {
   ];
 
   return createConfig({
-    chains: [arcTestnet],
+    chains: [arcTestnet, baseSepolia, sepolia],
     connectors,
     transports: {
       [arcTestnet.id]: http(arcRpcUrl),
+      [baseSepolia.id]: http(),
+      [sepolia.id]: http(),
     },
     ssr: true,
   });
