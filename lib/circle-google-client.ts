@@ -105,7 +105,7 @@ export async function startCircleGoogleLogin(returnTo = "/dashboard") {
   }
 
   writeDeviceCredentials(credentials);
-  sessionStorage.setItem(PENDING_STORAGE_KEY, "1");
+  sessionStorage.setItem(PENDING_STORAGE_KEY, String(Date.now()));
   sessionStorage.setItem(
     RETURN_STORAGE_KEY,
     returnTo.startsWith("/") ? returnTo : "/dashboard",
@@ -140,7 +140,21 @@ function executeChallenge(
   });
 
   return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(
+        new Error(
+          "Circle approval timed out. Please close the wallet window and try again.",
+        ),
+      );
+    }, 120_000);
+
     sdk.execute(challengeId, (error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
       if (error) {
         reject(new Error(error.message || "Wallet creation was cancelled."));
         return;
@@ -184,15 +198,27 @@ function finishRedirect(status: "ready" | "error", message?: string) {
 }
 
 export async function resumeCircleGoogleLogin() {
-  if (
-    !isCircleGoogleWalletConfigured ||
-    sessionStorage.getItem(PENDING_STORAGE_KEY) !== "1"
-  ) {
+  const pendingValue = sessionStorage.getItem(PENDING_STORAGE_KEY);
+  if (!isCircleGoogleWalletConfigured || !pendingValue) {
     return false;
   }
 
+  const startedAt = Number(pendingValue);
+  if (!Number.isFinite(startedAt) || Date.now() - startedAt > 2 * 60_000) {
+    finishRedirect(
+      "error",
+      "The previous Google wallet setup expired. Please start again.",
+    );
+    return true;
+  }
+
   let sdk: W3SSdk;
+  let callbackStarted = false;
+  let loginWatchdog: number | undefined;
   const onLoginComplete: LoginCompleteCallback = async (error, result) => {
+    callbackStarted = true;
+    window.clearTimeout(loginWatchdog);
+
     if (error || !result || !("oAuthInfo" in result)) {
       finishRedirect("error", error?.message ?? "Google sign-in failed.");
       return;
@@ -229,5 +255,13 @@ export async function resumeCircleGoogleLogin() {
 
   sdk = await createSdk(onLoginComplete);
   await sdk.getDeviceId();
+  if (!callbackStarted) {
+    loginWatchdog = window.setTimeout(() => {
+      finishRedirect(
+        "error",
+        "Google returned to ClearDeal, but Circle did not finish the login. Please try again.",
+      );
+    }, 30_000);
+  }
   return true;
 }

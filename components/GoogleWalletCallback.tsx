@@ -25,16 +25,17 @@ export function GoogleWalletCallback() {
   if (!processing) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/50 p-5 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-2xl">
-        <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-blue-600" />
-        <p className="mt-4 text-[16px] font-bold text-slate-950">
-          Preparing your ClearDeal wallet
-        </p>
-        <p className="mt-2 text-[12px] leading-5 text-slate-500">
-          Circle is opening your existing Arc wallet or creating it for this
-          Google account.
-        </p>
+    <div className="pointer-events-none fixed inset-x-3 bottom-4 z-20 flex justify-center">
+      <div className="flex w-full max-w-md items-center gap-3 rounded-2xl border border-blue-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,.2)]">
+        <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-blue-600" />
+        <div>
+          <p className="text-[13px] font-bold text-slate-950">
+            Preparing your ClearDeal wallet
+          </p>
+          <p className="mt-0.5 text-[11px] leading-5 text-slate-500">
+            Complete the Circle approval window if it appears.
+          </p>
+        </div>
       </div>
     </div>
   );
