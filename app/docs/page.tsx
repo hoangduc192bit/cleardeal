@@ -28,6 +28,7 @@ export default function DocsPage() {
             <a href="#lifecycle">Project stages</a>
             <a href="#roles">Who does what</a>
             <a href="#crosschain">Bring USDC to Arc</a>
+            <a href="#recovery">Passkey recovery</a>
             <a href="#data">What is public</a>
             <a href="#arc">Why Arc</a>
             <a href="#status">Release status</a>
@@ -73,6 +74,20 @@ export default function DocsPage() {
             </div>
             <p className="mt-5 border border-amber-300 bg-amber-50 p-4 text-[11px] leading-6 text-amber-900">
               App Kit does not support token swaps on Base Sepolia or Ethereum Sepolia. ClearDeal therefore bridges existing testnet USDC and does not claim to convert test ETH or other source-testnet tokens.
+            </p>
+          </DocSection>
+
+          <DocSection id="recovery" title="Passkey backup and recovery">
+            <p className="text-[13px] leading-7 text-[#766b5d]">
+              A Circle passkey cannot be exported as a seed phrase. ClearDeal instead lets a signed-in passkey wallet register a separate 12-word recovery key on Arc Testnet. If the original passkey is lost, those words can authorize a new passkey for the same ClearDeal smart wallet.
+            </p>
+            <div className="mt-6 grid gap-px border border-[#ded5c6] bg-[#ded5c6] sm:grid-cols-3">
+              <Fact label="Passkey" value="Remains on the user device" />
+              <Fact label="Recovery phrase" value="Shown once in the browser" />
+              <Fact label="ClearDeal server" value="Never receives the phrase" />
+            </div>
+            <p className="mt-5 border border-amber-300 bg-amber-50 p-4 text-[11px] leading-6 text-amber-900">
+              Anyone with the recovery phrase can replace the passkey. Store it offline or in a trusted password manager. ClearDeal support will never ask for it.
             </p>
           </DocSection>
 

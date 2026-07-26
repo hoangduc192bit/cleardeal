@@ -155,6 +155,12 @@ try {
     ),
     "The dashboard sample did not finish rendering.",
   );
+  assert(
+    await pollEvaluate(
+      "document.body.innerText.toLowerCase().includes('read-only demo')",
+    ),
+    "The dashboard sample details did not finish rendering.",
+  );
   const dashboardDesktop = await evaluate(`({
     heading: document.querySelector('h1')?.textContent?.trim(),
     horizontalOverflow:
@@ -190,6 +196,7 @@ try {
   const walletMenu = await evaluate(`({
     heading: document.body.innerText.includes('Sign in to ClearDeal'),
     passkey: document.body.innerText.includes('Create passkey account'),
+    recovery: document.body.innerText.includes('Lost your passkey?'),
     browserWallet: document.body.innerText.includes('Browser Wallet'),
     walletConnect: document.body.innerText.includes('WalletConnect')
   })`);
@@ -201,10 +208,41 @@ try {
     );
   } else {
     assert(walletMenu.passkey, "Passkey sign-in is missing.");
+    assert(walletMenu.recovery, "Passkey recovery is missing.");
     assert(walletMenu.walletConnect, "WalletConnect is missing.");
   }
 
-  await clickByText("Sign in");
+  if (walletMenu.recovery) {
+    await clickByText("Lost your passkey?");
+    assert(
+      await pollEvaluate(
+        "document.body.innerText.includes('Recover your ClearDeal wallet')",
+      ),
+      "The passkey recovery modal did not open.",
+    );
+    const recoveryModal = await evaluate(`({
+      arcOnly: document.body.innerText.includes('Arc Testnet'),
+      noServerStorage:
+        document.body.innerText.includes('never sent to the ClearDeal server'),
+      lostPasskeyWarning:
+        document.body.innerText.includes('works only if these words were registered')
+    })`);
+    assert(recoveryModal.arcOnly, "The recovery network boundary is missing.");
+    assert(
+      recoveryModal.noServerStorage,
+      "The recovery storage boundary is missing.",
+    );
+    assert(
+      recoveryModal.lostPasskeyWarning,
+      "The recovery prerequisite warning is missing.",
+    );
+    await screenshot("passkey-recovery-production.png");
+    await evaluate(
+      "document.querySelector('[aria-label=\"Close recovery\"]')?.click()",
+    );
+  } else {
+    await clickByText("Sign in");
+  }
   await clickByText("Preview crosschain funding");
   const crosschainModal = await evaluate(`({
     open: document.body.innerText.includes('Bring testnet USDC to Arc'),
@@ -228,6 +266,40 @@ try {
   })`);
   assert(!landingMobile.horizontalOverflow, "Mobile landing page overflows.");
   await screenshot("landing-production-mobile.png");
+
+  if (walletMenu.recovery) {
+    await navigate(`${baseUrl}/docs`, 390, 844);
+    await evaluate(
+      "document.querySelector('[aria-label=\"Open menu\"]')?.click()",
+    );
+    await clickByText("Sign in");
+    await clickByText("Lost your passkey?");
+    assert(
+      await pollEvaluate(
+        "document.body.innerText.includes('Recover your ClearDeal wallet')",
+      ),
+      "The mobile recovery modal did not open.",
+    );
+    const recoveryMobile = await evaluate(`({
+      horizontalOverflow:
+        document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      dialogFits:
+        (() => {
+          const dialog = document.querySelector('[aria-label="Recover passkey wallet"] > div');
+          if (!dialog) return false;
+          const rect = dialog.getBoundingClientRect();
+          return rect.left >= 0 && rect.right <= window.innerWidth;
+        })()
+    })`);
+    assert(
+      !recoveryMobile.horizontalOverflow && recoveryMobile.dialogFits,
+      "The mobile recovery modal does not fit the viewport.",
+    );
+    await screenshot("passkey-recovery-production-mobile.png");
+    await evaluate(
+      "document.querySelector('[aria-label=\"Close recovery\"]')?.click()",
+    );
+  }
 
   await navigate(`${baseUrl}/dashboard`, 390, 844);
   assert(

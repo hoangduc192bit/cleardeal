@@ -87,6 +87,21 @@ Sepolia. ClearDeal displays that limitation instead of presenting a fake
 testnet swap. Test ETH and other source-testnet tokens must not be represented
 as convertible through this flow.
 
+## Passkey backup and recovery
+
+Circle passkey accounts can register an optional 12-word recovery key on Arc
+Testnet. The passkey itself is not exported. The recovery phrase derives a
+separate recovery signer that can authorize a new passkey if the original
+device credential is lost.
+
+- `Back up wallet` is available only after signing in with a Circle passkey.
+- `Lost your passkey?` creates a new passkey from a previously registered
+  recovery phrase.
+- The phrase is generated and processed in the browser. It is never sent to
+  the ClearDeal API, written to local storage, logged, or committed.
+- Importing the phrase into a browser wallet shows the recovery signer, not the
+  ClearDeal smart-wallet address. Its intended purpose is account recovery.
+
 ## Required configuration
 
 ```bash

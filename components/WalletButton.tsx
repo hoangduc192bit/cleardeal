@@ -21,6 +21,7 @@ import {
   isCirclePasskeyConfigured,
   isWalletConnectConfigured,
 } from "@/config/wagmi";
+import { PasskeyRecoveryModal } from "@/components/PasskeyRecoveryModal";
 
 function shortAddress(address: `0x${string}`) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -35,7 +36,7 @@ function walletLabel(name: string) {
 }
 
 export function WalletButton() {
-  const { address, isConnected } = useAccount();
+  const { address, connector, isConnected } = useAccount();
   const chainId = useChainId();
   const { connectors, connect, error, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -44,6 +45,9 @@ export function WalletButton() {
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuClosing, setMenuClosing] = useState(false);
   const [hasInjectedWallet, setHasInjectedWallet] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState<
+    "backup" | "recover" | undefined
+  >();
   const closeTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -82,28 +86,49 @@ export function WalletButton() {
 
   if (isConnected && address) {
     const wrongNetwork = chainId !== arcTestnet.id;
+    const passkeyWallet = connector?.id.startsWith("circle-passkey");
 
     return (
-      <div className="flex items-center gap-2">
-        {wrongNetwork && (
+      <>
+        <div className="flex items-center gap-2">
+          {wrongNetwork && (
+            <button
+              className="h-11 whitespace-nowrap rounded-xl border border-amber-200 bg-amber-50 px-3.5 text-[13px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-60"
+              disabled={isSwitching}
+              onClick={() => switchChain({ chainId: arcTestnet.id })}
+              type="button"
+            >
+              {isSwitching ? "Switching..." : "Switch to Arc"}
+            </button>
+          )}
+          {passkeyWallet ? (
+            <button
+              aria-label="Back up passkey wallet"
+              className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl border border-blue-200 bg-blue-50 px-3.5 text-[13px] font-semibold text-blue-800 transition-colors hover:bg-blue-100"
+              onClick={() => setRecoveryMode("backup")}
+              type="button"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">Back up wallet</span>
+            </button>
+          ) : null}
           <button
-            className="h-11 whitespace-nowrap rounded-xl border border-amber-200 bg-amber-50 px-3.5 text-[13px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-60"
-            disabled={isSwitching}
-            onClick={() => switchChain({ chainId: arcTestnet.id })}
+            className="flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 text-[13px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+            onClick={() => disconnect()}
             type="button"
           >
-            {isSwitching ? "Switching..." : "Switch to Arc"}
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Account {shortAddress(address)}
           </button>
-        )}
-        <button
-          className="flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 text-[13px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
-          onClick={() => disconnect()}
-          type="button"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          Account {shortAddress(address)}
-        </button>
-      </div>
+        </div>
+        {recoveryMode ? (
+          <PasskeyRecoveryModal
+            connectedAddress={address}
+            mode={recoveryMode}
+            onClose={() => setRecoveryMode(undefined)}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -128,7 +153,8 @@ export function WalletButton() {
               Sign in to ClearDeal
             </div>
             <p className="passkey-panel-copy mt-1.5 text-[12px] leading-relaxed text-blue-100">
-              Use your device passkey. No seed phrase, wallet extension, or volatile gas token required.
+              Use your device passkey. No seed phrase is required to start, and
+              you can add a separate recovery phrase later.
             </p>
             <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-blue-50">
               <span className="passkey-panel-badge rounded-lg bg-white/10 px-1 py-1.5">User controlled</span>
@@ -166,6 +192,23 @@ export function WalletButton() {
                 <span className="font-bold">Passkey beta is code-complete but not enabled.</span>{" "}
                 Add the Circle Modular Wallets client URL and client key to the deployment after allowing this domain in Circle Console.
               </div>
+            ) : null}
+
+            {isCirclePasskeyConfigured ? (
+              <button
+                className="flex min-h-11 w-full items-center justify-between rounded-xl px-3.5 text-left text-[12px] font-semibold text-blue-700 transition-colors hover:bg-blue-50"
+                onClick={() => {
+                  closeMenu();
+                  setRecoveryMode("recover");
+                }}
+                type="button"
+              >
+                <span className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4" />
+                  Lost your passkey?
+                </span>
+                <span className="text-[11px] text-blue-500">Recover wallet</span>
+              </button>
             ) : null}
 
             <div className="flex items-center gap-2 px-1 pb-0.5 pt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
@@ -227,6 +270,12 @@ export function WalletButton() {
         </div>
       )}
 
+      {recoveryMode ? (
+        <PasskeyRecoveryModal
+          mode={recoveryMode}
+          onClose={() => setRecoveryMode(undefined)}
+        />
+      ) : null}
     </div>
   );
 }
