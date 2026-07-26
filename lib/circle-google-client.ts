@@ -6,13 +6,15 @@ import type {
   SocialLoginResult,
 } from "@circle-fin/w3s-pw-web-sdk/dist/src/types";
 
-const DEVICE_STORAGE_KEY = "cleardeal.google-wallet-device";
-const PENDING_STORAGE_KEY = "cleardeal.google-wallet-pending";
-const RETURN_STORAGE_KEY = "cleardeal.google-wallet-return";
-
 type DeviceCredentials = {
   deviceToken: string;
   deviceEncryptionKey: string;
+};
+
+type GoogleWalletFlow = DeviceCredentials & {
+  pending: true;
+  returnTo: string;
+  startedAt: number;
 };
 
 export const isCircleGoogleWalletConfigured = Boolean(
@@ -28,25 +30,11 @@ function googleClientId() {
   return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
 }
 
-function readDeviceCredentials() {
-  try {
-    const value = sessionStorage.getItem(DEVICE_STORAGE_KEY);
-    if (!value) return undefined;
-    const parsed = JSON.parse(value) as DeviceCredentials;
-    if (!parsed.deviceToken || !parsed.deviceEncryptionKey) return undefined;
-    return parsed;
-  } catch {
-    return undefined;
-  }
-}
-
-function writeDeviceCredentials(credentials: DeviceCredentials) {
-  sessionStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(credentials));
-}
-
-async function createSdk(onLoginComplete: LoginCompleteCallback) {
+async function createSdk(
+  onLoginComplete: LoginCompleteCallback,
+  credentials?: DeviceCredentials,
+) {
   const { W3SSdk } = await import("@circle-fin/w3s-pw-web-sdk");
-  const credentials = readDeviceCredentials();
 
   return new W3SSdk(
     {
@@ -85,6 +73,26 @@ async function postWalletAction(body: Record<string, unknown>) {
   return data;
 }
 
+async function getPendingFlow() {
+  const response = await fetch("/api/wallets/google?flow=1", {
+    cache: "no-store",
+  });
+  const data = (await response.json()) as Partial<GoogleWalletFlow> & {
+    pending?: boolean;
+  };
+  if (
+    !response.ok ||
+    !data.pending ||
+    !data.deviceToken ||
+    !data.deviceEncryptionKey ||
+    !data.returnTo ||
+    !Number.isFinite(data.startedAt)
+  ) {
+    return undefined;
+  }
+  return data as GoogleWalletFlow;
+}
+
 export async function startCircleGoogleLogin(returnTo = "/dashboard") {
   if (!isCircleGoogleWalletConfigured) {
     throw new Error("Google wallet is not configured.");
@@ -95,6 +103,10 @@ export async function startCircleGoogleLogin(returnTo = "/dashboard") {
   const data = await postWalletAction({
     action: "createDeviceToken",
     deviceId,
+    returnTo:
+      returnTo.startsWith("/") && !returnTo.startsWith("//")
+        ? returnTo
+        : "/dashboard",
   });
   const credentials = {
     deviceToken: String(data.deviceToken ?? ""),
@@ -103,13 +115,6 @@ export async function startCircleGoogleLogin(returnTo = "/dashboard") {
   if (!credentials.deviceToken || !credentials.deviceEncryptionKey) {
     throw new Error("Circle did not return device credentials.");
   }
-
-  writeDeviceCredentials(credentials);
-  sessionStorage.setItem(PENDING_STORAGE_KEY, String(Date.now()));
-  sessionStorage.setItem(
-    RETURN_STORAGE_KEY,
-    returnTo.startsWith("/") ? returnTo : "/dashboard",
-  );
 
   sdk.updateConfigs({
     appSettings: { appId: appId() },
@@ -179,15 +184,20 @@ async function waitForWallet() {
   throw new Error("Wallet was created but is still being indexed by Circle.");
 }
 
-function finishRedirect(status: "ready" | "error", message?: string) {
-  const returnTo =
-    sessionStorage.getItem(RETURN_STORAGE_KEY) ?? "/dashboard";
-  sessionStorage.removeItem(PENDING_STORAGE_KEY);
-  sessionStorage.removeItem(RETURN_STORAGE_KEY);
-  sessionStorage.removeItem(DEVICE_STORAGE_KEY);
-
+async function finishRedirect(
+  status: "ready" | "error",
+  returnTo: string,
+  message?: string,
+) {
+  try {
+    await postWalletAction({ action: "clearFlow" });
+  } catch {
+    // The short-lived encrypted cookie expires automatically.
+  }
   const url = new URL(
-    returnTo.startsWith("/") ? returnTo : "/dashboard",
+    returnTo.startsWith("/") && !returnTo.startsWith("//")
+      ? returnTo
+      : "/dashboard",
     window.location.origin,
   );
   url.searchParams.set("google_wallet", status);
@@ -198,15 +208,17 @@ function finishRedirect(status: "ready" | "error", message?: string) {
 }
 
 export async function resumeCircleGoogleLogin() {
-  const pendingValue = sessionStorage.getItem(PENDING_STORAGE_KEY);
-  if (!isCircleGoogleWalletConfigured || !pendingValue) {
+  if (!isCircleGoogleWalletConfigured) {
     return false;
   }
 
-  const startedAt = Number(pendingValue);
-  if (!Number.isFinite(startedAt) || Date.now() - startedAt > 2 * 60_000) {
-    finishRedirect(
+  const flow = await getPendingFlow();
+  if (!flow) return false;
+
+  if (Date.now() - flow.startedAt > 2 * 60_000) {
+    await finishRedirect(
       "error",
+      flow.returnTo,
       "The previous Google wallet setup expired. Please start again.",
     );
     return true;
@@ -220,7 +232,11 @@ export async function resumeCircleGoogleLogin() {
     window.clearTimeout(loginWatchdog);
 
     if (error || !result || !("oAuthInfo" in result)) {
-      finishRedirect("error", error?.message ?? "Google sign-in failed.");
+      await finishRedirect(
+        "error",
+        flow.returnTo,
+        error?.message ?? "Google sign-in failed.",
+      );
       return;
     }
 
@@ -244,21 +260,23 @@ export async function resumeCircleGoogleLogin() {
         await executeChallenge(sdk, challengeId, login);
       }
       await waitForWallet();
-      finishRedirect("ready");
+      await finishRedirect("ready", flow.returnTo);
     } catch (cause) {
-      finishRedirect(
+      await finishRedirect(
         "error",
+        flow.returnTo,
         cause instanceof Error ? cause.message : "Google wallet setup failed.",
       );
     }
   };
 
-  sdk = await createSdk(onLoginComplete);
+  sdk = await createSdk(onLoginComplete, flow);
   await sdk.getDeviceId();
   if (!callbackStarted) {
     loginWatchdog = window.setTimeout(() => {
-      finishRedirect(
+      void finishRedirect(
         "error",
+        flow.returnTo,
         "Google returned to ClearDeal, but Circle did not finish the login. Please try again.",
       );
     }, 30_000);

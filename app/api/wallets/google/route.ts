@@ -3,9 +3,14 @@ import { NextResponse } from "next/server";
 
 import {
   CIRCLE_GOOGLE_COOKIE,
+  CIRCLE_GOOGLE_FLOW_COOKIE,
+  CIRCLE_GOOGLE_FLOW_SECONDS,
   CIRCLE_GOOGLE_SESSION_SECONDS,
+  openCircleGoogleFlow,
   openCircleGoogleSession,
+  sealCircleGoogleFlow,
   sealCircleGoogleSession,
+  type CircleGoogleFlow,
   type CircleGoogleSession,
 } from "@/lib/circle-google-session";
 import { rateLimit } from "@/lib/rate-limit";
@@ -114,6 +119,30 @@ async function clearSessionCookie() {
   cookieStore.delete(CIRCLE_GOOGLE_COOKIE);
 }
 
+async function currentFlow() {
+  const cookieStore = await cookies();
+  return openCircleGoogleFlow(
+    cookieStore.get(CIRCLE_GOOGLE_FLOW_COOKIE)?.value,
+  );
+}
+
+async function clearFlowCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(CIRCLE_GOOGLE_FLOW_COOKIE);
+}
+
+function safeReturnTo(value: unknown) {
+  if (
+    typeof value === "string" &&
+    value.startsWith("/") &&
+    !value.startsWith("//") &&
+    value.length <= 1024
+  ) {
+    return value;
+  }
+  return "/dashboard";
+}
+
 async function listArcWallets(userToken: string) {
   const result = await circleRequest(
     "/v1/w3s/wallets",
@@ -137,12 +166,27 @@ async function listArcWallets(userToken: string) {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!configured()) {
     return noStore(
       { configured: false, authenticated: false, wallets: [] },
       503,
     );
+  }
+
+  if (new URL(request.url).searchParams.get("flow") === "1") {
+    const flow = await currentFlow();
+    if (!flow) {
+      await clearFlowCookie();
+      return noStore({ pending: false });
+    }
+    return noStore({
+      pending: true,
+      deviceToken: flow.deviceToken,
+      deviceEncryptionKey: flow.deviceEncryptionKey,
+      returnTo: flow.returnTo,
+      startedAt: flow.startedAt,
+    });
   }
 
   const session = await currentSession();
@@ -238,7 +282,29 @@ export async function POST(request: Request) {
     if (!data.data?.deviceToken || !data.data.deviceEncryptionKey) {
       return noStore({ error: "invalid_device_token_response" }, 502);
     }
+
+    const flow: CircleGoogleFlow = {
+      deviceToken: data.data.deviceToken,
+      deviceEncryptionKey: data.data.deviceEncryptionKey,
+      returnTo: safeReturnTo(body.returnTo),
+      startedAt: Date.now(),
+      expiresAt: Date.now() + CIRCLE_GOOGLE_FLOW_SECONDS * 1000,
+    };
+    const cookieStore = await cookies();
+    cookieStore.set(CIRCLE_GOOGLE_FLOW_COOKIE, sealCircleGoogleFlow(flow), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: CIRCLE_GOOGLE_FLOW_SECONDS,
+    });
+
     return noStore(data.data);
+  }
+
+  if (action === "clearFlow") {
+    await clearFlowCookie();
+    return noStore({ cleared: true });
   }
 
   if (action === "storeSession") {
@@ -348,5 +414,6 @@ export async function DELETE(request: Request) {
     return noStore({ error: "invalid_request_origin" }, 403);
   }
   await clearSessionCookie();
+  await clearFlowCookie();
   return noStore({ signedOut: true });
 }
