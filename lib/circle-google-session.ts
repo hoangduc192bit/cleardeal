@@ -6,7 +6,8 @@ import {
 } from "node:crypto";
 
 export const CIRCLE_GOOGLE_COOKIE = "cleardeal_google_wallet";
-export const CIRCLE_GOOGLE_SESSION_SECONDS = 55 * 60;
+export const CIRCLE_GOOGLE_SESSION_SECONDS = 30 * 24 * 60 * 60;
+export const CIRCLE_GOOGLE_USER_TOKEN_SECONDS = 55 * 60;
 export const CIRCLE_GOOGLE_FLOW_COOKIE = "cleardeal_google_wallet_flow";
 export const CIRCLE_GOOGLE_FLOW_SECONDS = 5 * 60;
 
@@ -14,12 +15,15 @@ export type CircleGoogleSession = {
   userToken: string;
   encryptionKey: string;
   refreshToken?: string;
+  deviceId?: string;
   email?: string;
   name?: string;
+  tokenExpiresAt?: number;
   expiresAt: number;
 };
 
 export type CircleGoogleFlow = {
+  deviceId: string;
   deviceToken: string;
   deviceEncryptionKey: string;
   returnTo: string;

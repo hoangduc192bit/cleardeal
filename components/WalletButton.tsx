@@ -57,6 +57,7 @@ export function WalletButton() {
   const [googleWalletAddress, setGoogleWalletAddress] = useState<
     `0x${string}` | undefined
   >();
+  const [googleWalletEmail, setGoogleWalletEmail] = useState<string>();
   const [googleWalletModal, setGoogleWalletModal] = useState(false);
   const [googleWalletMessage, setGoogleWalletMessage] = useState<string>();
   const [recoveryMode, setRecoveryMode] = useState<
@@ -79,6 +80,7 @@ export function WalletButton() {
       .then(async (response) => {
         const data = (await response.json()) as {
           authenticated?: boolean;
+          profile?: { email?: string };
           wallets?: Array<{ address?: string }>;
         };
         if (active) {
@@ -92,6 +94,11 @@ export function WalletButton() {
           setGoogleWalletReady(ready);
           setGoogleWalletAddress(
             ready ? (address as `0x${string}`) : undefined,
+          );
+          setGoogleWalletEmail(
+            ready && typeof data.profile?.email === "string"
+              ? data.profile.email
+              : undefined,
           );
         }
       })
@@ -230,7 +237,12 @@ export function WalletButton() {
           <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-black text-blue-600 shadow-sm">
             G
           </span>
-          Google {shortAddress(googleWalletAddress)}
+          <span className="max-w-36 truncate">
+            {googleWalletEmail || "Google"}
+          </span>
+          <span className="font-mono text-[11px] text-emerald-600">
+            {shortAddress(googleWalletAddress)}
+          </span>
         </button>
         {googleWalletModal ? (
           <GoogleWalletModal
@@ -238,6 +250,7 @@ export function WalletButton() {
             onSignedOut={() => {
               setGoogleWalletReady(false);
               setGoogleWalletAddress(undefined);
+              setGoogleWalletEmail(undefined);
               notifyCircleGoogleWalletChanged();
             }}
           />
@@ -433,6 +446,7 @@ export function WalletButton() {
           onSignedOut={() => {
             setGoogleWalletReady(false);
             setGoogleWalletAddress(undefined);
+            setGoogleWalletEmail(undefined);
           }}
         />
       ) : null}

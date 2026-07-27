@@ -6,6 +6,7 @@ import {
   CIRCLE_GOOGLE_FLOW_COOKIE,
   CIRCLE_GOOGLE_FLOW_SECONDS,
   CIRCLE_GOOGLE_SESSION_SECONDS,
+  CIRCLE_GOOGLE_USER_TOKEN_SECONDS,
   openCircleGoogleFlow,
   openCircleGoogleSession,
   sealCircleGoogleFlow,
@@ -125,14 +126,76 @@ function validCallData(value: unknown): value is string {
 
 async function currentSession() {
   const cookieStore = await cookies();
-  return openCircleGoogleSession(
+  const session = openCircleGoogleSession(
     cookieStore.get(CIRCLE_GOOGLE_COOKIE)?.value,
   );
+  if (!session) return undefined;
+
+  if (
+    session.tokenExpiresAt &&
+    session.tokenExpiresAt > Date.now() + 5 * 60 * 1000
+  ) {
+    return session;
+  }
+
+  return (await refreshSession(session)) ?? session;
 }
 
 async function clearSessionCookie() {
   const cookieStore = await cookies();
   cookieStore.delete(CIRCLE_GOOGLE_COOKIE);
+}
+
+async function storeSessionCookie(session: CircleGoogleSession) {
+  const cookieStore = await cookies();
+  cookieStore.set(CIRCLE_GOOGLE_COOKIE, sealCircleGoogleSession(session), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: CIRCLE_GOOGLE_SESSION_SECONDS,
+  });
+}
+
+async function refreshSession(session: CircleGoogleSession) {
+  if (!session.refreshToken || !session.deviceId) return undefined;
+
+  const result = await circleRequest(
+    "/v1/w3s/users/token/refresh",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        idempotencyKey: crypto.randomUUID(),
+        refreshToken: session.refreshToken,
+        deviceId: session.deviceId,
+      }),
+    },
+    session.userToken,
+  );
+  if (!result.ok) return undefined;
+
+  const responseData = result.data as {
+    data?: {
+      userToken?: string;
+      encryptionKey?: string;
+      refreshToken?: string;
+    };
+  };
+  if (!responseData.data?.userToken || !responseData.data.encryptionKey) {
+    return undefined;
+  }
+
+  const refreshed: CircleGoogleSession = {
+    ...session,
+    userToken: responseData.data.userToken,
+    encryptionKey: responseData.data.encryptionKey,
+    refreshToken: responseData.data.refreshToken ?? session.refreshToken,
+    tokenExpiresAt:
+      Date.now() + CIRCLE_GOOGLE_USER_TOKEN_SECONDS * 1000,
+    expiresAt: Date.now() + CIRCLE_GOOGLE_SESSION_SECONDS * 1000,
+  };
+  await storeSessionCookie(refreshed);
+  return refreshed;
 }
 
 async function currentFlow() {
@@ -299,6 +362,7 @@ export async function POST(request: Request) {
     }
 
     const flow: CircleGoogleFlow = {
+      deviceId,
       deviceToken: data.data.deviceToken,
       deviceEncryptionKey: data.data.deviceEncryptionKey,
       returnTo: safeReturnTo(body.returnTo),
@@ -332,7 +396,7 @@ export async function POST(request: Request) {
     const refreshToken =
       typeof body.refreshToken === "string"
         ? body.refreshToken.trim()
-        : undefined;
+        : "";
     const email =
       typeof body.email === "string" ? body.email.trim().slice(0, 254) : undefined;
     const name =
@@ -341,28 +405,31 @@ export async function POST(request: Request) {
     if (
       !userToken ||
       !encryptionKey ||
+      !refreshToken ||
       userToken.length > 8192 ||
-      encryptionKey.length > 8192
+      encryptionKey.length > 8192 ||
+      refreshToken.length > 8192
     ) {
       return noStore({ error: "invalid_google_wallet_session" }, 400);
+    }
+
+    const flow = await currentFlow();
+    if (!flow?.deviceId) {
+      return noStore({ error: "google_wallet_flow_expired" }, 401);
     }
 
     const session: CircleGoogleSession = {
       userToken,
       encryptionKey,
       refreshToken,
+      deviceId: flow.deviceId,
       email,
       name,
+      tokenExpiresAt:
+        Date.now() + CIRCLE_GOOGLE_USER_TOKEN_SECONDS * 1000,
       expiresAt: Date.now() + CIRCLE_GOOGLE_SESSION_SECONDS * 1000,
     };
-    const cookieStore = await cookies();
-    cookieStore.set(CIRCLE_GOOGLE_COOKIE, sealCircleGoogleSession(session), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: CIRCLE_GOOGLE_SESSION_SECONDS,
-    });
+    await storeSessionCookie(session);
 
     return noStore({ stored: true });
   }
