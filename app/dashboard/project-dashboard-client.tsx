@@ -20,10 +20,12 @@ import {
   X,
 } from "lucide-react";
 import {
+  encodeFunctionData,
   erc20Abi,
   formatUnits,
   parseEventLogs,
   parseUnits,
+  type Abi,
   type Address,
   type Hash,
 } from "viem";
@@ -45,6 +47,7 @@ import { CrosschainFundingModal } from "@/components/cleardeal/CrosschainFunding
 import { WalletDirectoryModal } from "@/components/treasury/WalletDirectoryModal";
 import { WalletButton } from "@/components/WalletButton";
 import { arcTestnet } from "@/config/chain";
+import { useCircleGoogleWallet } from "@/hooks/use-circle-google-wallet";
 import { useClearDeals } from "@/hooks/use-clear-deals";
 import { useDealActivity } from "@/hooks/use-deal-activity";
 import { useWalletDirectory } from "@/hooks/use-wallet-directory";
@@ -54,6 +57,10 @@ import {
   clearDealEscrowConfigured,
   clearDealUsdcAddress,
 } from "@/lib/cleardeal-contract";
+import {
+  executeCircleGoogleContract,
+  signCircleGoogleMessage,
+} from "@/lib/circle-google-client";
 import {
   escrowBalance,
   formatDate,
@@ -189,12 +196,20 @@ async function prepareEvidenceAttachments(files: readonly File[]) {
 }
 
 export function ProjectDashboardClient() {
-  const { address, isConnected } = useAccount();
+  const {
+    address: connectedWalletAddress,
+    isConnected: isCryptoWalletConnected,
+  } = useAccount();
+  const googleWallet = useCircleGoogleWallet();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { switchChainAsync } = useSwitchChain();
-  const { signMessageAsync } = useSignMessage();
-  const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync: signCryptoWalletMessage } = useSignMessage();
+  const { writeContractAsync: writeCryptoWalletContract } = useWriteContract();
+  const useGoogleWallet =
+    !isCryptoWalletConnected && googleWallet.isConnected;
+  const address = connectedWalletAddress ?? googleWallet.address;
+  const isConnected = isCryptoWalletConnected || googleWallet.isConnected;
   const { deals, loading, error, refresh } = useClearDeals(address);
   const directory = useWalletDirectory();
   const [selectedId, setSelectedId] = useState<bigint>();
@@ -240,7 +255,8 @@ export function ProjectDashboardClient() {
     : undefined;
   const paid = selected.releasedAmount;
   const held = escrowBalance(selected);
-  const wrongNetwork = isConnected && chainId !== arcTestnet.id;
+  const wrongNetwork =
+    isCryptoWalletConnected && chainId !== arcTestnet.id;
   const disabledReason = !isConnected
     ? "Sign in first."
     : wrongNetwork
@@ -266,10 +282,38 @@ export function ProjectDashboardClient() {
     if (!address || !publicClient || !clearDealEscrowAddress) {
       throw new Error("Sign in and configure the ClearDeal contract first.");
     }
-    if (chainId !== arcTestnet.id) {
+    if (isCryptoWalletConnected && chainId !== arcTestnet.id) {
       await switchChainAsync({ chainId: arcTestnet.id });
     }
     return { address, publicClient, contract: clearDealEscrowAddress };
+  }
+
+  async function signMessageAsync({ message }: { message: string }) {
+    if (useGoogleWallet) return signCircleGoogleMessage(message);
+    return signCryptoWalletMessage({ message });
+  }
+
+  async function writeContractAsync(request: {
+    address: Address;
+    abi: Abi;
+    chainId?: number;
+    functionName: string;
+    args?: readonly unknown[];
+  }): Promise<Hash> {
+    if (!useGoogleWallet) {
+      return writeCryptoWalletContract(
+        request as Parameters<typeof writeCryptoWalletContract>[0],
+      );
+    }
+    const callData = encodeFunctionData({
+      abi: request.abi,
+      functionName: request.functionName,
+      args: request.args,
+    } as Parameters<typeof encodeFunctionData>[0]);
+    return executeCircleGoogleContract({
+      contractAddress: request.address,
+      callData,
+    });
   }
 
   async function waitFor(hash: Hash, message: string, refreshAfter = true) {

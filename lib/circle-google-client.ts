@@ -2,9 +2,13 @@
 
 import type { W3SSdk } from "@circle-fin/w3s-pw-web-sdk";
 import type {
+  ChallengeResult,
   LoginCompleteCallback,
+  SignMessageResult,
+  SignTransactionResult,
   SocialLoginResult,
 } from "@circle-fin/w3s-pw-web-sdk/dist/src/types";
+import type { Address, Hash } from "viem";
 
 type DeviceCredentials = {
   deviceToken: string;
@@ -134,17 +138,27 @@ export async function startCircleGoogleLogin(returnTo = "/dashboard") {
   await sdk.performLogin(SocialLoginProvider.GOOGLE);
 }
 
+type CircleAuthentication = {
+  userToken: string;
+  encryptionKey: string;
+};
+
+type CircleChallengeResult =
+  | ChallengeResult
+  | SignMessageResult
+  | SignTransactionResult;
+
 function executeChallenge(
   sdk: W3SSdk,
   challengeId: string,
-  login: SocialLoginResult,
+  authentication: CircleAuthentication,
 ) {
   sdk.setAuthentication({
-    userToken: login.userToken,
-    encryptionKey: login.encryptionKey,
+    userToken: authentication.userToken,
+    encryptionKey: authentication.encryptionKey,
   });
 
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<CircleChallengeResult>((resolve, reject) => {
     let settled = false;
     const timeout = window.setTimeout(() => {
       if (settled) return;
@@ -156,17 +170,107 @@ function executeChallenge(
       );
     }, 120_000);
 
-    sdk.execute(challengeId, (error) => {
+    sdk.execute(challengeId, (error, result) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeout);
       if (error) {
-        reject(new Error(error.message || "Wallet creation was cancelled."));
+        reject(new Error(error.message || "Wallet approval was cancelled."));
         return;
       }
-      resolve();
+      if (!result) {
+        reject(new Error("Circle did not return the wallet approval result."));
+        return;
+      }
+      resolve(result);
     });
   });
+}
+
+function challengeAuthentication(data: Record<string, unknown>) {
+  const challengeId =
+    typeof data.challengeId === "string" ? data.challengeId : "";
+  const userToken = typeof data.userToken === "string" ? data.userToken : "";
+  const encryptionKey =
+    typeof data.encryptionKey === "string" ? data.encryptionKey : "";
+  if (!challengeId || !userToken || !encryptionKey) {
+    throw new Error("Circle did not return a valid wallet approval.");
+  }
+  return { challengeId, userToken, encryptionKey };
+}
+
+async function executeAuthenticatedChallenge(data: Record<string, unknown>) {
+  const { challengeId, userToken, encryptionKey } =
+    challengeAuthentication(data);
+  const sdk = await createSdk(() => undefined);
+  await sdk.getDeviceId();
+  const result = await executeChallenge(sdk, challengeId, {
+    userToken,
+    encryptionKey,
+  });
+  return { challengeId, result };
+}
+
+export async function signCircleGoogleMessage(message: string) {
+  const challenge = await postWalletAction({
+    action: "signMessage",
+    message,
+  });
+  const { result } = await executeAuthenticatedChallenge(challenge);
+  const signature =
+    "data" in result && result.data && "signature" in result.data
+      ? result.data.signature
+      : undefined;
+  if (typeof signature !== "string" || !signature.startsWith("0x")) {
+    throw new Error("Circle approved the message but returned no signature.");
+  }
+  return signature as Hash;
+}
+
+function failedStatus(status: unknown) {
+  return (
+    typeof status === "string" &&
+    ["FAILED", "DENIED", "EXPIRED", "CANCELLED"].includes(status.toUpperCase())
+  );
+}
+
+async function waitForCircleTransaction(challengeId: string) {
+  for (let attempt = 0; attempt < 45; attempt += 1) {
+    const state = await postWalletAction({
+      action: "transactionStatus",
+      challengeId,
+    });
+    if (
+      typeof state.txHash === "string" &&
+      /^0x[0-9a-fA-F]{64}$/.test(state.txHash)
+    ) {
+      return state.txHash as Hash;
+    }
+    if (failedStatus(state.challengeStatus) || failedStatus(state.transactionState)) {
+      throw new Error(
+        typeof state.errorReason === "string"
+          ? state.errorReason
+          : "The Google wallet transaction was not completed.",
+      );
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+  }
+  throw new Error(
+    "The wallet approved the transaction, but Arc is still processing it. Refresh shortly to see the result.",
+  );
+}
+
+export async function executeCircleGoogleContract(input: {
+  contractAddress: Address;
+  callData: Hash;
+}) {
+  const challenge = await postWalletAction({
+    action: "contractExecution",
+    contractAddress: input.contractAddress,
+    callData: input.callData,
+  });
+  const { challengeId } = await executeAuthenticatedChallenge(challenge);
+  return waitForCircleTransaction(challengeId);
 }
 
 async function waitForWallet() {

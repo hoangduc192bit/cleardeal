@@ -167,9 +167,10 @@ export function GoogleWalletModal({
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] leading-5 text-amber-800">
-                Google wallet creation is live. ClearDeal contract approvals
-                still use passkey or a connected crypto wallet in this release.
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-5 text-emerald-800">
+                This wallet is ready for ClearDeal. You can sign project notes,
+                approve contract actions, and pay USDC after confirming each
+                request in Circle.
               </div>
 
               <div className="mt-4 flex gap-2">

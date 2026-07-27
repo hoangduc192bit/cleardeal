@@ -107,6 +107,22 @@ function circleErrorMessage(data: unknown) {
   return value.message ?? value.error?.message ?? "Circle request failed.";
 }
 
+function validChallengeId(value: unknown) {
+  return typeof value === "string" && /^[a-zA-Z0-9-]{1,128}$/.test(value);
+}
+
+function validContractAddress(value: unknown): value is string {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value);
+}
+
+function validCallData(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^0x(?:[0-9a-fA-F]{2})*$/.test(value) &&
+    value.length <= 131_074
+  );
+}
+
 async function currentSession() {
   const cookieStore = await cookies();
   return openCircleGoogleSession(
@@ -230,13 +246,6 @@ export async function POST(request: Request) {
     return noStore({ error: "invalid_request_origin" }, 403);
   }
 
-  const limited = await rateLimit(request, {
-    key: "circle-google-wallet",
-    limit: 20,
-    windowSeconds: 60,
-  });
-  if (limited) return limited;
-
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -245,6 +254,12 @@ export async function POST(request: Request) {
   }
 
   const action = typeof body.action === "string" ? body.action : "";
+  const limited = await rateLimit(request, {
+    key: `circle-google-wallet:${action || "unknown"}`,
+    limit: action === "transactionStatus" ? 90 : 20,
+    windowSeconds: 60,
+  });
+  if (limited) return limited;
 
   if (action === "createDeviceToken") {
     const deviceId =
@@ -404,6 +419,185 @@ export async function POST(request: Request) {
       return noStore({ error: "missing_wallet_challenge" }, 502);
     }
     return noStore({ challengeId: data.data.challengeId });
+  }
+
+  if (action === "signMessage") {
+    const message = typeof body.message === "string" ? body.message : "";
+    if (!message || message.length > 16_384) {
+      return noStore({ error: "invalid_message" }, 400);
+    }
+
+    const walletsResult = await listArcWallets(session.userToken);
+    if (!walletsResult.ok) {
+      return noStore(
+        {
+          error: "wallet_lookup_failed",
+          message: circleErrorMessage(walletsResult.data),
+        },
+        walletsResult.status,
+      );
+    }
+    const wallet = (walletsResult.data as { wallets: CircleWallet[] }).wallets[0];
+    if (!wallet) return noStore({ error: "arc_wallet_not_found" }, 404);
+
+    const result = await circleRequest(
+      "/v1/w3s/user/sign/message",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          walletId: wallet.id,
+          message,
+          encodedByHex: false,
+          memo: "ClearDeal authorization",
+        }),
+      },
+      session.userToken,
+    );
+    if (!result.ok) {
+      return noStore(
+        {
+          error: "message_signing_failed",
+          message: circleErrorMessage(result.data),
+        },
+        result.status,
+      );
+    }
+    const data = result.data as { data?: { challengeId?: string } };
+    if (!data.data?.challengeId) {
+      return noStore({ error: "missing_signing_challenge" }, 502);
+    }
+    return noStore({
+      challengeId: data.data.challengeId,
+      userToken: session.userToken,
+      encryptionKey: session.encryptionKey,
+    });
+  }
+
+  if (action === "contractExecution") {
+    if (!validContractAddress(body.contractAddress)) {
+      return noStore({ error: "invalid_contract_address" }, 400);
+    }
+    if (!validCallData(body.callData)) {
+      return noStore({ error: "invalid_contract_call_data" }, 400);
+    }
+
+    const walletsResult = await listArcWallets(session.userToken);
+    if (!walletsResult.ok) {
+      return noStore(
+        {
+          error: "wallet_lookup_failed",
+          message: circleErrorMessage(walletsResult.data),
+        },
+        walletsResult.status,
+      );
+    }
+    const wallet = (walletsResult.data as { wallets: CircleWallet[] }).wallets[0];
+    if (!wallet) return noStore({ error: "arc_wallet_not_found" }, 404);
+
+    const result = await circleRequest(
+      "/v1/w3s/user/transactions/contractExecution",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          idempotencyKey: crypto.randomUUID(),
+          contractAddress: body.contractAddress,
+          walletId: wallet.id,
+          callData: body.callData,
+          feeLevel: "MEDIUM",
+          refId: `cleardeal-${crypto.randomUUID()}`,
+        }),
+      },
+      session.userToken,
+    );
+    if (!result.ok) {
+      return noStore(
+        {
+          error: "contract_execution_failed",
+          message: circleErrorMessage(result.data),
+        },
+        result.status,
+      );
+    }
+    const data = result.data as { data?: { challengeId?: string } };
+    if (!data.data?.challengeId) {
+      return noStore({ error: "missing_contract_challenge" }, 502);
+    }
+    return noStore({
+      challengeId: data.data.challengeId,
+      userToken: session.userToken,
+      encryptionKey: session.encryptionKey,
+    });
+  }
+
+  if (action === "transactionStatus") {
+    if (!validChallengeId(body.challengeId)) {
+      return noStore({ error: "invalid_challenge_id" }, 400);
+    }
+    const challengeId = body.challengeId as string;
+    const challengeResult = await circleRequest(
+      `/v1/w3s/user/challenges/${encodeURIComponent(challengeId)}`,
+      { method: "GET" },
+      session.userToken,
+    );
+    if (!challengeResult.ok) {
+      return noStore(
+        {
+          error: "challenge_lookup_failed",
+          message: circleErrorMessage(challengeResult.data),
+        },
+        challengeResult.status,
+      );
+    }
+
+    const challengeData = challengeResult.data as {
+      data?: {
+        challenge?: {
+          status?: string;
+          correlationIds?: string[];
+        };
+      };
+    };
+    const challenge = challengeData.data?.challenge;
+    const transactionId = challenge?.correlationIds?.find((value) =>
+      /^[a-zA-Z0-9-]{1,128}$/.test(value),
+    );
+    if (!transactionId) {
+      return noStore({
+        challengeStatus: challenge?.status ?? "PENDING",
+      });
+    }
+
+    const transactionResult = await circleRequest(
+      `/v1/w3s/transactions/${encodeURIComponent(transactionId)}`,
+      { method: "GET" },
+      session.userToken,
+    );
+    if (!transactionResult.ok) {
+      return noStore(
+        {
+          error: "transaction_lookup_failed",
+          message: circleErrorMessage(transactionResult.data),
+        },
+        transactionResult.status,
+      );
+    }
+    const transactionData = transactionResult.data as {
+      data?: {
+        transaction?: {
+          state?: string;
+          txHash?: string;
+          errorReason?: string;
+        };
+      };
+    };
+    const transaction = transactionData.data?.transaction;
+    return noStore({
+      challengeStatus: challenge?.status ?? "PENDING",
+      transactionId,
+      transactionState: transaction?.state ?? "PENDING",
+      txHash: transaction?.txHash,
+      errorReason: transaction?.errorReason,
+    });
   }
 
   return noStore({ error: "unknown_wallet_action" }, 400);

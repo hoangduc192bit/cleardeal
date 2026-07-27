@@ -27,6 +27,7 @@ import {
   isCircleGoogleWalletConfigured,
   startCircleGoogleLogin,
 } from "@/lib/circle-google-client";
+import { notifyCircleGoogleWalletChanged } from "@/hooks/use-circle-google-wallet";
 
 function shortAddress(address: `0x${string}`) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -233,6 +234,7 @@ export function WalletButton() {
             onSignedOut={() => {
               setGoogleWalletReady(false);
               setGoogleWalletAddress(undefined);
+              notifyCircleGoogleWalletChanged();
             }}
           />
         ) : null}
