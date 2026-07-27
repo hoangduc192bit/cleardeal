@@ -16,6 +16,7 @@ import {
   useSwitchChain,
 } from "wagmi";
 
+import { ArcFaucetButton } from "@/components/ArcFaucetButton";
 import { arcTestnet } from "@/config/chain";
 import { GoogleWalletModal } from "@/components/GoogleWalletModal";
 import { PasskeyRecoveryModal } from "@/components/PasskeyRecoveryModal";
@@ -174,6 +175,9 @@ export function WalletButton() {
     return (
       <>
         <div className="flex items-center gap-2">
+          {!wrongNetwork ? (
+            <ArcFaucetButton address={address} compact />
+          ) : null}
           {wrongNetwork && (
             <button
               className="h-11 whitespace-nowrap rounded-xl border border-amber-200 bg-amber-50 px-3.5 text-[13px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-60"

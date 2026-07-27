@@ -10,6 +10,8 @@ import {
   X,
 } from "lucide-react";
 
+import { ArcFaucetButton } from "@/components/ArcFaucetButton";
+
 type GoogleWallet = {
   id: string;
   address: string;
@@ -171,6 +173,14 @@ export function GoogleWalletModal({
                 This wallet is ready for ClearDeal. You can sign project notes,
                 approve contract actions, and pay USDC after confirming each
                 request in Circle.
+              </div>
+
+              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+                <p className="mb-2 text-[11px] leading-5 text-blue-900">
+                  Arc uses the same test USDC balance for payments and network
+                  fees. Test tokens have no real-world value.
+                </p>
+                <ArcFaucetButton address={wallet.address} />
               </div>
 
               <div className="mt-4 flex gap-2">
