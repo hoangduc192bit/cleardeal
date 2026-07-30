@@ -19,6 +19,24 @@ describe("ClearDeal metadata", function () {
       { title: "Build", dueDate: "2026-08-15" },
     ],
   };
+  const productMetadata: ClearDealMetadata = {
+    version: 2,
+    client: "Northstar Studio",
+    team: "Saigon Digital",
+    title: "Vietnam website launch",
+    category: "Website development",
+    summary:
+      "Design and deliver a responsive business website through three protected payments.",
+    milestones: [
+      {
+        title: "Working website",
+        dueDate: "2026-08-15",
+        deliverable: "A deployed staging website with the agreed pages.",
+        acceptanceCriteria:
+          "All agreed pages load on mobile and desktop and the contact form works.",
+      },
+    ],
+  };
 
   it("normalizes and hashes canonical metadata deterministically", function () {
     const normalized = normalizeDealMetadata({
@@ -35,6 +53,46 @@ describe("ClearDeal metadata", function () {
     expect(normalizeDealMetadata({ ...metadata, milestones: [] })).to.equal(null);
     expect(normalizeDealMetadata({ ...metadata, title: "x".repeat(121) })).to.equal(null);
     expect(normalizeDealMetadata({ ...metadata, milestones: [{ title: "Design", dueDate: "tomorrow" }] })).to.equal(null);
+  });
+
+  it("normalizes rich product metadata without changing its payment terms", function () {
+    const normalized = normalizeDealMetadata({
+      ...productMetadata,
+      summary: `  ${productMetadata.summary}  `,
+      milestones: productMetadata.milestones.map((milestone) => ({
+        ...milestone,
+        deliverable: ` ${milestone.deliverable} `,
+        acceptanceCriteria: ` ${milestone.acceptanceCriteria} `,
+      })),
+    });
+    expect(normalized).to.deep.equal(productMetadata);
+    expect(hashDealMetadata(normalized!)).to.equal(
+      hashDealMetadata(productMetadata),
+    );
+  });
+
+  it("keeps version one serialization backward-compatible", function () {
+    expect(serializeDealMetadata(metadata)).to.equal(
+      '{"version":1,"client":"Acme Commerce","title":"Commerce website","milestones":[{"title":"Design","dueDate":"2026-08-01"},{"title":"Build","dueDate":"2026-08-15"}]}',
+    );
+  });
+
+  it("rejects incomplete rich project terms", function () {
+    expect(
+      normalizeDealMetadata({ ...productMetadata, category: "Unknown" }),
+    ).to.equal(null);
+    expect(
+      normalizeDealMetadata({ ...productMetadata, summary: "" }),
+    ).to.equal(null);
+    expect(
+      normalizeDealMetadata({
+        ...productMetadata,
+        milestones: productMetadata.milestones.map((milestone) => ({
+          ...milestone,
+          acceptanceCriteria: "",
+        })),
+      }),
+    ).to.equal(null);
   });
 
   it("binds the signature message to owner, hash, request, and time", function () {

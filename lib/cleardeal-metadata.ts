@@ -1,13 +1,28 @@
 import { keccak256, toBytes, type Address, type Hex } from "viem";
 
+export const clearDealProjectCategories = [
+  "Website development",
+  "Video production",
+  "Brand and design",
+  "Software delivery",
+  "Custom project",
+] as const;
+
+export type ClearDealProjectCategory =
+  (typeof clearDealProjectCategories)[number];
+
 export interface ClearDealMetadata {
-  version: 1;
+  version: 1 | 2;
   client: string;
   team?: string;
   title: string;
+  category?: ClearDealProjectCategory;
+  summary?: string;
   milestones: Array<{
     title: string;
     dueDate: string;
+    deliverable?: string;
+    acceptanceCriteria?: string;
   }>;
 }
 
@@ -27,16 +42,67 @@ export function normalizeDealMetadata(value: unknown): ClearDealMetadata | null 
   const client = typeof input.client === "string" ? input.client.trim() : "";
   const team = typeof input.team === "string" ? input.team.trim() : "";
   const title = typeof input.title === "string" ? input.title.trim() : "";
-  if (input.version !== 1 || !client || client.length > 80 || team.length > 80 || !title || title.length > 120) return null;
+  if (
+    (input.version !== 1 && input.version !== 2) ||
+    !client ||
+    client.length > 80 ||
+    team.length > 80 ||
+    !title ||
+    title.length > 120
+  ) {
+    return null;
+  }
   if (!Array.isArray(input.milestones) || input.milestones.length === 0 || input.milestones.length > 20) return null;
 
   const milestones = input.milestones.map((milestone) => {
     const milestoneTitle = typeof milestone?.title === "string" ? milestone.title.trim() : "";
     const dueDate = typeof milestone?.dueDate === "string" ? milestone.dueDate : "";
     if (!milestoneTitle || milestoneTitle.length > 120 || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return null;
-    return { title: milestoneTitle, dueDate };
+    if (input.version === 1) return { title: milestoneTitle, dueDate };
+    const deliverable =
+      typeof milestone?.deliverable === "string"
+        ? milestone.deliverable.trim()
+        : "";
+    const acceptanceCriteria =
+      typeof milestone?.acceptanceCriteria === "string"
+        ? milestone.acceptanceCriteria.trim()
+        : "";
+    if (
+      !deliverable ||
+      deliverable.length > 500 ||
+      !acceptanceCriteria ||
+      acceptanceCriteria.length > 700
+    ) {
+      return null;
+    }
+    return {
+      title: milestoneTitle,
+      dueDate,
+      deliverable,
+      acceptanceCriteria,
+    };
   });
   if (milestones.some((milestone) => milestone === null)) return null;
+
+  if (input.version === 2) {
+    const category = clearDealProjectCategories.includes(
+      input.category as ClearDealProjectCategory,
+    )
+      ? (input.category as ClearDealProjectCategory)
+      : undefined;
+    const summary =
+      typeof input.summary === "string" ? input.summary.trim() : "";
+    if (!category || !summary || summary.length > 700) return null;
+    return {
+      version: 2,
+      client,
+      ...(team ? { team } : {}),
+      title,
+      category,
+      summary,
+      milestones: milestones as ClearDealMetadata["milestones"],
+    };
+  }
 
   return {
     version: 1,
@@ -48,6 +114,22 @@ export function normalizeDealMetadata(value: unknown): ClearDealMetadata | null 
 }
 
 export function serializeDealMetadata(metadata: ClearDealMetadata) {
+  if (metadata.version === 2) {
+    return JSON.stringify({
+      version: 2,
+      client: metadata.client,
+      ...(metadata.team ? { team: metadata.team } : {}),
+      title: metadata.title,
+      category: metadata.category,
+      summary: metadata.summary,
+      milestones: metadata.milestones.map((milestone) => ({
+        title: milestone.title,
+        dueDate: milestone.dueDate,
+        deliverable: milestone.deliverable,
+        acceptanceCriteria: milestone.acceptanceCriteria,
+      })),
+    });
+  }
   return JSON.stringify({
     version: 1,
     client: metadata.client,

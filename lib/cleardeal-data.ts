@@ -1,4 +1,5 @@
 import { formatUnits, type Address, type Hex } from "viem";
+import type { ClearDealProjectCategory } from "@/lib/cleardeal-metadata";
 
 export type DealStatus = "Draft" | "Fully funded" | "In progress" | "Completed" | "Refunded" | "Disputed";
 export type MilestoneStatus = "Pending" | "Ready for approval" | "Released" | "Refunded" | "Disputed" | "Resolved";
@@ -14,6 +15,8 @@ export interface ClearDealMilestone {
   revisionCount: number;
   deliverableHash: Hex;
   status: MilestoneStatus;
+  deliverable?: string;
+  acceptanceCriteria?: string;
 }
 
 export interface ClearDealRecord {
@@ -21,6 +24,8 @@ export interface ClearDealRecord {
   client: string;
   team: string;
   title: string;
+  category?: ClearDealProjectCategory;
+  summary?: string;
   buyer: Address;
   seller: Address;
   arbitrator: Address;

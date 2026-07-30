@@ -26,6 +26,7 @@ export default function DocsPage() {
           <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#766b5d]">Documentation</p>
           <nav className="mt-5 grid gap-3 text-[12px] text-[#766b5d]">
             <a href="#overview">Overview</a>
+            <a href="#product">Product workflow</a>
             <a href="#lifecycle">Project stages</a>
             <a href="#roles">Who does what</a>
             <a href="#crosschain">Bring USDC to Arc</a>
@@ -44,6 +45,21 @@ export default function DocsPage() {
               ClearDeal helps an international client and a Vietnamese team agree on a project, prepare the money, submit work, and review each delivery without letting silence block payment forever.
             </p>
           </section>
+
+          <DocSection id="product" title="A complete project workspace">
+            <p className="text-[13px] leading-7 text-[#766b5d]">
+              Start from a website, video, design, software, or custom template.
+              Every payment step states what the team must deliver and how the
+              client decides it is complete. ClearDeal then keeps the project,
+              review, files, and Arc payment receipt in one place.
+            </p>
+            <div className="mt-6 grid gap-px border border-[#ded5c6] bg-[#ded5c6] sm:grid-cols-2">
+              <Info title="Create clearly" items={["Choose a practical template", "Select saved wallets by name", "Define each deliverable and approval check"]} />
+              <Info title="Know what is next" items={["Search every project", "Filter work that needs your action", "See the current review or payment step"]} />
+              <Info title="Share safely" items={["Copy a read-only project link", "Keep protected files behind a wallet signature", "Unlock clean files after payment"]} />
+              <Info title="Keep a record" items={["Download a project receipt", "Verify payments on ArcScan", "Read the complete signed timeline"]} />
+            </div>
+          </DocSection>
 
           <DocSection id="lifecycle" title="Project stages">
             <div className="divide-y divide-[#ded5c6] border-y border-[#ded5c6]">

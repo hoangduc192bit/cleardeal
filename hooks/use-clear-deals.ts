@@ -33,14 +33,14 @@ async function loadMetadata(metadataHash: Hex) {
   return body.metadata ?? null;
 }
 
-export function useClearDeals(participant?: Address) {
+export function useClearDeals(participant?: Address, focusedDealId?: bigint) {
   const publicClient = usePublicClient();
   const [deals, setDeals] = useState<ClearDealRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
   const refresh = useCallback(async () => {
-    if (!participant || !publicClient || !clearDealEscrowAddress) {
+    if (!publicClient || !clearDealEscrowAddress) {
       setDeals([]);
       setLoading(false);
       return;
@@ -49,21 +49,40 @@ export function useClearDeals(participant?: Address) {
     setError(undefined);
     try {
       const contract = clearDealEscrowAddress;
-      const dealCount = await publicClient.readContract({
-        address: contract,
-        abi: clearDealEscrowAbi,
-        functionName: "participantDealCount",
-        args: [participant],
-      });
-      const offset = dealCount > 50n ? dealCount - 50n : 0n;
-      const dealIds = await publicClient.readContract({
-        address: contract,
-        abi: clearDealEscrowAbi,
-        functionName: "getDealIds",
-        args: [participant, offset, 50n],
-      });
+      let dealIds: readonly bigint[] = [];
+      if (participant) {
+        const dealCount = await publicClient.readContract({
+          address: contract,
+          abi: clearDealEscrowAbi,
+          functionName: "participantDealCount",
+          args: [participant],
+        });
+        const offset = dealCount > 50n ? dealCount - 50n : 0n;
+        dealIds = await publicClient.readContract({
+          address: contract,
+          abi: clearDealEscrowAbi,
+          functionName: "getDealIds",
+          args: [participant, offset, 50n],
+        });
+      }
+      const uniqueDealIds = [...dealIds];
+      if (focusedDealId !== undefined && focusedDealId >= 0n) {
+        const nextDealId = await publicClient.readContract({
+          address: contract,
+          abi: clearDealEscrowAbi,
+          functionName: "nextDealId",
+        });
+        if (focusedDealId >= nextDealId) {
+          throw new Error(
+            `Project #${focusedDealId.toString()} does not exist on this ClearDeal contract.`,
+          );
+        }
+        if (!uniqueDealIds.some((dealId) => dealId === focusedDealId)) {
+          uniqueDealIds.push(focusedDealId);
+        }
+      }
 
-      const records = await Promise.all([...dealIds].reverse().map(async (dealId) => {
+      const records = await Promise.all([...uniqueDealIds].reverse().map(async (dealId) => {
         const rawDeal = await publicClient.readContract({
           address: contract,
           abi: clearDealEscrowAbi,
@@ -106,6 +125,9 @@ export function useClearDeals(participant?: Address) {
             revisionCount: Number(revisionCount),
             deliverableHash: deliverableHash || EMPTY_HASH,
             status: mapMilestoneStatus(milestoneStatus),
+            deliverable: metadata?.milestones[index]?.deliverable,
+            acceptanceCriteria:
+              metadata?.milestones[index]?.acceptanceCriteria,
           } satisfies ClearDealMilestone;
         }));
 
@@ -114,6 +136,8 @@ export function useClearDeals(participant?: Address) {
           client: metadata?.client ?? shortFallback(buyer),
           team: metadata?.team ?? shortFallback(seller),
           title: metadata?.title ?? `Deal #${dealId}`,
+          category: metadata?.category,
+          summary: metadata?.summary,
           buyer,
           seller,
           arbitrator,
@@ -140,7 +164,7 @@ export function useClearDeals(participant?: Address) {
     } finally {
       setLoading(false);
     }
-  }, [participant, publicClient]);
+  }, [focusedDealId, participant, publicClient]);
 
   useEffect(() => {
     void refresh();

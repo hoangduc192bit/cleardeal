@@ -64,6 +64,27 @@ Client creates project and delivery steps
 The primary product is available at `/dashboard`. `/how-it-works` explains the
 flow in plain language, and `/docs` describes the public Testnet boundary.
 
+## Product V1 capabilities
+
+ClearDeal now covers the complete day-to-day project flow rather than only a
+single contract demonstration:
+
+- Project templates for website, video, brand/design, software, and custom work.
+- Multi-milestone budgets with a named deliverable and a plain-language
+  acceptance check for every payment.
+- A wallet contact book, so repeat teams and dispute helpers can be selected by
+  name instead of copying addresses each time.
+- Search, active/completed/disputed filters, and a `Needs my action` inbox.
+- Protected review previews, viewer watermarking, and clean files that unlock
+  only after that milestone is paid.
+- Shareable read-only project links for clients, teams, and external observers.
+- Downloadable JSON project receipts containing the Arc contract, roles,
+  milestone terms, hashes, statuses, and payment totals.
+- Optional email reminders and automatic release after an objection-free review
+  deadline.
+- Circle Google wallet, passkey, browser-wallet, and WalletConnect entry paths.
+- Circle App Kit testnet USDC bridge from Base Sepolia or Ethereum Sepolia.
+
 The earlier company-spend and multilateral-clearing proofs remain in the
 repository and at their direct routes for historical demonstration, but they
 are no longer the main ClearDeal story.
@@ -206,9 +227,9 @@ npm run deploy:cleardeal:testnet
 
 - Arc Testnet USDC has no real-world value.
 - Project amounts, wallet addresses, hashes, and payment results are public.
-- Delivery files are encrypted offchain and access-controlled, but this MVP is
-  not a DRM system or audited confidential data room. Do not upload personal,
-  salary, regulated, or irreplaceable production secrets.
+- Delivery files are encrypted offchain and access-controlled, but the current
+  Testnet product is not a DRM system or audited confidential data room. Do not
+  upload personal, salary, regulated, or irreplaceable production secrets.
 - The product is not audited for mainnet use.
 - Arc Privacy is roadmap only and is not represented as a live feature.
 - Real VND bank withdrawal is not included; any VND or VietQR screen remains a

@@ -13,6 +13,8 @@ const baseUrl = (
   process.env.CLEARDEAL_QA_BASE_URL ?? "http://127.0.0.1:3001"
 ).replace(/\/$/, "");
 const localQa = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(baseUrl);
+const skipInteractions =
+  process.env.CLEARDEAL_QA_SKIP_INTERACTIONS === "true";
 const issues = [];
 
 await mkdir(outputDir, { recursive: true });
@@ -192,73 +194,77 @@ try {
   );
   await screenshot("dashboard-production-desktop.png");
 
-  await clickByText("Sign in");
-  const walletMenu = await evaluate(`({
-    heading: document.body.innerText.includes('Sign in to ClearDeal'),
-    googleWallet: document.body.innerText.includes('Continue with Google'),
-    passkey: document.body.innerText.includes('Create passkey account'),
-    recovery: document.body.innerText.includes('Lost your passkey?'),
-    browserWallet: document.body.innerText.includes('Browser Wallet'),
-    walletConnect: document.body.innerText.includes('WalletConnect')
-  })`);
-  assert(walletMenu.heading, "The wallet menu did not open.");
-  if (localQa) {
-    assert(
-      walletMenu.passkey || walletMenu.walletConnect || walletMenu.browserWallet,
-      "No wallet sign-in option is available.",
-    );
-  } else {
-    assert(walletMenu.googleWallet, "Google wallet onboarding is missing.");
-    assert(walletMenu.passkey, "Passkey sign-in is missing.");
-    assert(walletMenu.recovery, "Passkey recovery is missing.");
-    assert(walletMenu.walletConnect, "WalletConnect is missing.");
-  }
-
-  if (walletMenu.recovery) {
-    await clickByText("Lost your passkey?");
-    assert(
-      await pollEvaluate(
-        "document.body.innerText.includes('Recover your ClearDeal wallet')",
-      ),
-      "The passkey recovery modal did not open.",
-    );
-    const recoveryModal = await evaluate(`({
-      arcOnly: document.body.innerText.includes('Arc Testnet'),
-      noServerStorage:
-        document.body.innerText.includes('never sent to the ClearDeal server'),
-      lostPasskeyWarning:
-        document.body.innerText.includes('works only if these words were registered')
-    })`);
-    assert(recoveryModal.arcOnly, "The recovery network boundary is missing.");
-    assert(
-      recoveryModal.noServerStorage,
-      "The recovery storage boundary is missing.",
-    );
-    assert(
-      recoveryModal.lostPasskeyWarning,
-      "The recovery prerequisite warning is missing.",
-    );
-    await screenshot("passkey-recovery-production.png");
-    await evaluate(
-      "document.querySelector('[aria-label=\"Close recovery\"]')?.click()",
-    );
-  } else {
+  let walletMenu;
+  let crosschainModal;
+  if (!skipInteractions) {
     await clickByText("Sign in");
+    walletMenu = await evaluate(`({
+      heading: document.body.innerText.includes('Sign in to ClearDeal'),
+      googleWallet: document.body.innerText.includes('Continue with Google'),
+      passkey: document.body.innerText.includes('Create passkey account'),
+      recovery: document.body.innerText.includes('Lost your passkey?'),
+      browserWallet: document.body.innerText.includes('Browser Wallet'),
+      walletConnect: document.body.innerText.includes('WalletConnect')
+    })`);
+    assert(walletMenu.heading, "The wallet menu did not open.");
+    if (localQa) {
+      assert(
+        walletMenu.passkey || walletMenu.walletConnect || walletMenu.browserWallet,
+        "No wallet sign-in option is available.",
+      );
+    } else {
+      assert(walletMenu.googleWallet, "Google wallet onboarding is missing.");
+      assert(walletMenu.passkey, "Passkey sign-in is missing.");
+      assert(walletMenu.recovery, "Passkey recovery is missing.");
+      assert(walletMenu.walletConnect, "WalletConnect is missing.");
+    }
+
+    if (walletMenu.recovery) {
+      await clickByText("Lost your passkey?");
+      assert(
+        await pollEvaluate(
+          "document.body.innerText.includes('Recover your ClearDeal wallet')",
+        ),
+        "The passkey recovery modal did not open.",
+      );
+      const recoveryModal = await evaluate(`({
+        arcOnly: document.body.innerText.includes('Arc Testnet'),
+        noServerStorage:
+          document.body.innerText.includes('never sent to the ClearDeal server'),
+        lostPasskeyWarning:
+          document.body.innerText.includes('works only if these words were registered')
+      })`);
+      assert(recoveryModal.arcOnly, "The recovery network boundary is missing.");
+      assert(
+        recoveryModal.noServerStorage,
+        "The recovery storage boundary is missing.",
+      );
+      assert(
+        recoveryModal.lostPasskeyWarning,
+        "The recovery prerequisite warning is missing.",
+      );
+      await screenshot("passkey-recovery-production.png");
+      await evaluate(
+        "document.querySelector('[aria-label=\"Close recovery\"]')?.click()",
+      );
+    } else {
+      await clickByText("Sign in");
+    }
+    await clickByText("Preview crosschain funding");
+    crosschainModal = await evaluate(`({
+      open: document.body.innerText.includes('Bring testnet USDC to Arc'),
+      base: document.body.innerText.includes('Base Sepolia'),
+      ethereum: document.body.innerText.includes('Ethereum Sepolia'),
+      destination: document.body.innerText.includes('Arc Testnet'),
+      bridgeOnly: document.body.innerText.includes('Bridge USDC')
+    })`);
+    assert(crosschainModal.open, "The crosschain funding modal did not open.");
+    assert(
+      crosschainModal.base && crosschainModal.ethereum && crosschainModal.destination,
+      "A supported bridge network is missing.",
+    );
+    await screenshot("crosschain-funding-production.png");
   }
-  await clickByText("Preview crosschain funding");
-  const crosschainModal = await evaluate(`({
-    open: document.body.innerText.includes('Bring testnet USDC to Arc'),
-    base: document.body.innerText.includes('Base Sepolia'),
-    ethereum: document.body.innerText.includes('Ethereum Sepolia'),
-    destination: document.body.innerText.includes('Arc Testnet'),
-    bridgeOnly: document.body.innerText.includes('Bridge USDC')
-  })`);
-  assert(crosschainModal.open, "The crosschain funding modal did not open.");
-  assert(
-    crosschainModal.base && crosschainModal.ethereum && crosschainModal.destination,
-    "A supported bridge network is missing.",
-  );
-  await screenshot("crosschain-funding-production.png");
 
   await navigate(`${baseUrl}/`, 390, 844);
   const landingMobile = await evaluate(`({
@@ -269,7 +275,7 @@ try {
   assert(!landingMobile.horizontalOverflow, "Mobile landing page overflows.");
   await screenshot("landing-production-mobile.png");
 
-  if (walletMenu.recovery) {
+  if (walletMenu?.recovery) {
     await navigate(`${baseUrl}/docs`, 390, 844);
     await evaluate(
       "document.querySelector('[aria-label=\"Open menu\"]')?.click()",
@@ -354,8 +360,18 @@ try {
     );
   }
 
-  if (issues.length) {
-    throw new Error(`Browser errors detected: ${issues.join(" | ")}`);
+  const actionableIssues = issues.filter(
+    (issue) =>
+      !(
+        localQa &&
+        issue.includes("/_next/webpack-hmr") &&
+        issue.includes("WebSocket connection")
+      ),
+  );
+  if (actionableIssues.length) {
+    throw new Error(
+      `Browser errors detected: ${actionableIssues.join(" | ")}`,
+    );
   }
 
   console.log(

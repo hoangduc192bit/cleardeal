@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -17,8 +18,11 @@ import {
   LockKeyhole,
   Menu,
   Plus,
+  ReceiptText,
   RefreshCw,
   RotateCcw,
+  Search,
+  Share2,
   ShieldCheck,
   Scale,
   Upload,
@@ -110,6 +114,9 @@ const demoProject: ClearDealRecord = {
   client: "Northstar Studio",
   team: "Saigon Digital",
   title: "Vietnam website launch",
+  category: "Website development",
+  summary:
+    "Design and deliver a responsive business website with an approved prototype, working staging release, and clean production handoff.",
   buyer: DEMO_ADDRESS,
   seller: DEMO_TEAM,
   arbitrator: DEMO_HELPER,
@@ -136,6 +143,9 @@ const demoProject: ClearDealRecord = {
       revisionCount: 0,
       deliverableHash: `0x${"a".repeat(64)}`,
       status: "Released",
+      deliverable: "Responsive page designs and an interactive prototype.",
+      acceptanceCriteria:
+        "The prototype includes every agreed page and can be reviewed on desktop and mobile.",
     },
     {
       id: 1n,
@@ -148,6 +158,10 @@ const demoProject: ClearDealRecord = {
       revisionCount: 1,
       deliverableHash: `0x${"b".repeat(64)}`,
       status: "Ready for approval",
+      deliverable:
+        "A deployed staging website with the agreed pages, CMS, and contact form.",
+      acceptanceCriteria:
+        "All agreed pages load on mobile and desktop, navigation works, and the contact form submits successfully.",
     },
     {
       id: 2n,
@@ -160,6 +174,10 @@ const demoProject: ClearDealRecord = {
       revisionCount: 0,
       deliverableHash: `0x${"0".repeat(64)}`,
       status: "Pending",
+      deliverable:
+        "Production deployment, source code, and administrator handoff.",
+      acceptanceCriteria:
+        "The production URL is live and the client receives working source and administrator access.",
     },
   ],
 };
@@ -171,6 +189,7 @@ interface TransactionState {
 }
 
 type DecisionKind = "change_request" | "milestone_dispute" | "milestone_resolution";
+type ProjectFilter = "all" | "action" | "active" | "completed" | "disputed";
 
 interface DecisionTarget {
   kind: DecisionKind;
@@ -189,6 +208,50 @@ function reviewTimeLeft(deadline: number, now: number) {
 
 function sameAddress(left?: string, right?: string) {
   return Boolean(left && right && left.toLowerCase() === right.toLowerCase());
+}
+
+function projectNeedsAction(deal: ClearDealRecord, address?: Address) {
+  if (!address) return false;
+  if (deal.status === "Draft" && sameAddress(address, deal.buyer)) return true;
+  return deal.milestones.some((milestone) => {
+    if (
+      milestone.status === "Pending" &&
+      sameAddress(address, deal.seller)
+    ) {
+      return true;
+    }
+    if (
+      milestone.status === "Ready for approval" &&
+      sameAddress(address, deal.buyer)
+    ) {
+      return true;
+    }
+    return (
+      milestone.status === "Disputed" &&
+      sameAddress(address, deal.arbitrator)
+    );
+  });
+}
+
+function projectActionLabel(deal: ClearDealRecord, address?: Address) {
+  if (!address) return undefined;
+  if (deal.status === "Draft" && sameAddress(address, deal.buyer)) {
+    return "Deposit budget";
+  }
+  const milestone = deal.milestones.find((item) => {
+    if (item.status === "Pending") return sameAddress(address, deal.seller);
+    if (item.status === "Ready for approval") {
+      return sameAddress(address, deal.buyer);
+    }
+    if (item.status === "Disputed") {
+      return sameAddress(address, deal.arbitrator);
+    }
+    return false;
+  });
+  if (!milestone) return undefined;
+  if (milestone.status === "Pending") return "Submit delivery";
+  if (milestone.status === "Ready for approval") return "Review delivery";
+  return "Decide dispute";
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -249,6 +312,18 @@ async function prepareEvidenceAttachments(
 }
 
 export function ProjectDashboardClient() {
+  const searchParams = useSearchParams();
+  const focusedProjectParam = searchParams.get("project");
+  const focusedDealId = useMemo(() => {
+    if (!focusedProjectParam || !/^\d+$/.test(focusedProjectParam)) {
+      return undefined;
+    }
+    try {
+      return BigInt(focusedProjectParam);
+    } catch {
+      return undefined;
+    }
+  }, [focusedProjectParam]);
   const {
     address: connectedWalletAddress,
     isConnected: isCryptoWalletConnected,
@@ -263,9 +338,15 @@ export function ProjectDashboardClient() {
     !isCryptoWalletConnected && googleWallet.isConnected;
   const address = connectedWalletAddress ?? googleWallet.address;
   const isConnected = isCryptoWalletConnected || googleWallet.isConnected;
-  const { deals, loading, error, refresh } = useClearDeals(address);
+  const { deals, loading, error, refresh } = useClearDeals(
+    address,
+    focusedDealId,
+  );
   const directory = useWalletDirectory();
   const [selectedId, setSelectedId] = useState<bigint>();
+  const [projectSearch, setProjectSearch] = useState("");
+  const [projectFilter, setProjectFilter] =
+    useState<ProjectFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [crosschainOpen, setCrosschainOpen] = useState(false);
   const [directoryOpen, setDirectoryOpen] = useState(false);
@@ -291,10 +372,19 @@ export function ProjectDashboardClient() {
 
   useEffect(() => {
     if (!deals.length) return setSelectedId(undefined);
-    if (selectedId === undefined || !deals.some((deal) => deal.id === selectedId)) {
-      setSelectedId(deals[0].id);
+    if (
+      focusedDealId !== undefined &&
+      deals.some((deal) => deal.id === focusedDealId)
+    ) {
+      setSelectedId(focusedDealId);
+      return;
     }
-  }, [deals, selectedId]);
+    setSelectedId((current) =>
+      current !== undefined && deals.some((deal) => deal.id === current)
+        ? current
+        : deals[0].id,
+    );
+  }, [deals, focusedDealId]);
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -391,6 +481,81 @@ export function ProjectDashboardClient() {
     directory.entries.find((entry) => sameAddress(entry.address, wallet))?.name ??
     fallback;
 
+  function selectProject(dealId: bigint) {
+    setSelectedId(dealId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", dealId.toString());
+    window.history.replaceState({}, "", url);
+  }
+
+  async function copyProjectLink(deal: ClearDealRecord) {
+    const url = new URL(window.location.href);
+    url.pathname = "/dashboard";
+    url.search = "";
+    url.searchParams.set("project", deal.id.toString());
+    await navigator.clipboard.writeText(url.toString());
+    setTransaction({
+      status: "confirmed",
+      message: "Public project link copied. Protected files still require a participant signature.",
+    });
+  }
+
+  function downloadProjectReceipt(deal: ClearDealRecord) {
+    const receipt = {
+      product: "ClearDeal",
+      network: "Arc Testnet",
+      contract: clearDealEscrowAddress,
+      project: {
+        id: deal.id.toString(),
+        title: deal.title,
+        category: deal.category,
+        summary: deal.summary,
+        client: { name: deal.client, wallet: deal.buyer },
+        team: { name: deal.team, wallet: deal.seller },
+        disputeHelperWallet: deal.arbitrator,
+        status: deal.status,
+        totalUsdc: formatUnits(deal.totalAmount, 6),
+        releasedUsdc: formatUnits(deal.releasedAmount, 6),
+        refundedUsdc: formatUnits(deal.refundedAmount, 6),
+        metadataHash: deal.metadataHash,
+        createdAt: new Date(deal.createdAt * 1_000).toISOString(),
+        refundDeadline: new Date(deal.refundDeadline * 1_000).toISOString(),
+        reviewHours: deal.reviewPeriod / 3_600,
+        maximumRevisions: deal.maxRevisions,
+        milestones: deal.milestones.map((milestone) => ({
+          number: Number(milestone.id) + 1,
+          title: milestone.title,
+          deliverable: milestone.deliverable,
+          acceptanceCriteria: milestone.acceptanceCriteria,
+          amountUsdc: formatUnits(milestone.amount, 6),
+          dueAt: new Date(milestone.dueAt * 1_000).toISOString(),
+          status: milestone.status,
+          submittedAt: milestone.submittedAt
+            ? new Date(milestone.submittedAt * 1_000).toISOString()
+            : null,
+          reviewDeadline: milestone.reviewDeadline
+            ? new Date(milestone.reviewDeadline * 1_000).toISOString()
+            : null,
+          revisionCount: milestone.revisionCount,
+          deliveryHash: milestone.deliverableHash,
+        })),
+      },
+      explorer: clearDealEscrowAddress
+        ? `${EXPLORER}/address/${clearDealEscrowAddress}`
+        : EXPLORER,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(receipt, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `cleardeal-project-${deal.id.toString()}-receipt.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function requireReady() {
     if (!address || !publicClient || !clearDealEscrowAddress) {
       throw new Error("Sign in and configure the ClearDeal contract first.");
@@ -478,11 +643,25 @@ export function ProjectDashboardClient() {
     setBusy(true);
     try {
       const metadata: ClearDealMetadata = {
-        version: 1,
+        version: 2,
         client: input.client,
         team: input.team,
         title: input.title,
-        milestones: input.milestones.map(({ title, dueDate }) => ({ title, dueDate })),
+        category: input.category,
+        summary: input.summary,
+        milestones: input.milestones.map(
+          ({
+            title,
+            dueDate,
+            deliverable,
+            acceptanceCriteria,
+          }) => ({
+            title,
+            dueDate,
+            deliverable,
+            acceptanceCriteria,
+          }),
+        ),
       };
       const metadataHash = hashDealMetadata(metadata);
       const notificationContacts: ClearDealNotificationContacts = {
@@ -545,7 +724,7 @@ export function ProjectDashboardClient() {
         strict: false,
       })[0];
       if (typeof created?.args.dealId === "bigint") {
-        setSelectedId(created.args.dealId);
+        selectProject(created.args.dealId);
       }
     } catch (cause) {
       setTransaction({
@@ -879,7 +1058,29 @@ export function ProjectDashboardClient() {
     }
   }
 
-  const projectRows = liveSelected ? deals : [demoProject];
+  const normalizedProjectSearch = projectSearch.trim().toLowerCase();
+  const visibleDeals = deals.filter((deal) => {
+    const matchesSearch =
+      !normalizedProjectSearch ||
+      [deal.title, deal.client, deal.team, deal.category]
+        .filter(Boolean)
+        .some((value) =>
+          value?.toLowerCase().includes(normalizedProjectSearch),
+        );
+    if (!matchesSearch) return false;
+    if (projectFilter === "action") return projectNeedsAction(deal, address);
+    if (projectFilter === "completed") return deal.status === "Completed";
+    if (projectFilter === "disputed") return deal.status === "Disputed";
+    if (projectFilter === "active") {
+      return (
+        deal.status === "Draft" ||
+        deal.status === "Fully funded" ||
+        deal.status === "In progress"
+      );
+    }
+    return true;
+  });
+  const projectRows = deals.length ? visibleDeals : [demoProject];
 
   return (
     <main className="cleardeal-app min-h-[100dvh] bg-[#fffcf0] text-[#2b2118]">
@@ -938,7 +1139,7 @@ export function ProjectDashboardClient() {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              disabled={Boolean(disabledReason)}
+              disabled={busy}
               className="inline-flex min-h-14 w-full items-center justify-center gap-3 bg-[#d58b00] px-5 text-[13px] font-semibold text-white hover:bg-[#bd7b00] disabled:cursor-not-allowed disabled:opacity-45"
             >
               <Plus className="h-5 w-5" />
@@ -962,14 +1163,47 @@ export function ProjectDashboardClient() {
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
-          <div className="lg:max-h-[calc(100dvh-250px)] lg:overflow-y-auto">
+          {deals.length ? (
+            <div className="grid gap-3 border-b border-[#ded5c6] p-4">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c8070]" />
+                <input
+                  type="search"
+                  value={projectSearch}
+                  onChange={(event) => setProjectSearch(event.target.value)}
+                  placeholder="Search projects..."
+                  className="min-h-11 w-full border border-[#d8cebd] bg-white pl-10 pr-3 text-[12px] outline-none focus:border-[#c88400]"
+                  aria-label="Search projects"
+                />
+              </label>
+              <select
+                value={projectFilter}
+                onChange={(event) =>
+                  setProjectFilter(event.target.value as ProjectFilter)
+                }
+                className="min-h-11 border border-[#d8cebd] bg-white px-3 text-[12px] outline-none focus:border-[#c88400]"
+                aria-label="Filter projects"
+              >
+                <option value="all">All projects</option>
+                <option value="action">Needs my action</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="disputed">Disputed</option>
+              </select>
+            </div>
+          ) : null}
+          <div className="lg:max-h-[calc(100dvh-360px)] lg:overflow-y-auto">
             {projectRows.map((deal) => {
               const active = deal.id === selected.id;
+              const actionLabel =
+                deal.id >= 0n
+                  ? projectActionLabel(deal, address)
+                  : undefined;
               return (
                 <button
                   key={deal.id.toString()}
                   type="button"
-                  onClick={() => deal.id >= 0n && setSelectedId(deal.id)}
+                  onClick={() => deal.id >= 0n && selectProject(deal.id)}
                   className={`flex w-full items-center gap-4 border-b border-[#ded5c6] px-5 py-5 text-left ${
                     active ? "border-l-[3px] border-l-[#d58b00] bg-[#fff2c9]" : "hover:bg-[#f7f4e9]"
                   }`}
@@ -980,18 +1214,63 @@ export function ProjectDashboardClient() {
                   <span className="min-w-0 flex-1">
                     <strong className="block truncate text-[13px]">{deal.title}</strong>
                     <span className="mt-1 block truncate text-[10px] text-[#766b5d]">{deal.team}</span>
+                    {actionLabel ? (
+                      <span className="mt-2 inline-flex border border-[#e0ad3f] bg-[#fff8e4] px-2 py-1 font-mono text-[8px] uppercase tracking-[0.08em] text-[#8c5a00]">
+                        {actionLabel}
+                      </span>
+                    ) : null}
                   </span>
                   <ArrowRight className="h-4 w-4 shrink-0 text-[#766b5d]" />
                 </button>
               );
             })}
+            {deals.length && !projectRows.length ? (
+              <div className="p-6 text-center">
+                <Search className="mx-auto h-5 w-5 text-[#9a8d7d]" />
+                <p className="mt-3 text-[12px] font-semibold">
+                  No matching projects
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectSearch("");
+                    setProjectFilter("all");
+                  }}
+                  className="mt-3 min-h-11 text-[11px] font-semibold text-[#8c5a00]"
+                >
+                  Clear search and filter
+                </button>
+              </div>
+            ) : null}
           </div>
-          {!isConnected ? (
-            <p className="m-5 border border-amber-200 bg-amber-50 p-4 text-[11px] leading-5 text-amber-900">
-              You are viewing a sample project. Sign in to create and run your own Arc Testnet project.
+          {error ? (
+            <p className="m-5 border border-rose-200 bg-rose-50 p-4 text-[11px] leading-5 text-rose-700">
+              {error}
             </p>
-          ) : error ? (
-            <p className="m-5 border border-rose-200 bg-rose-50 p-4 text-[11px] leading-5 text-rose-700">{error}</p>
+          ) : !isConnected ? (
+            <p className="m-5 border border-amber-200 bg-amber-50 p-4 text-[11px] leading-5 text-amber-900">
+              {isDemo
+                ? "You are viewing a sample project. Sign in to create and run your own Arc Testnet project."
+                : "This is a public project receipt. Sign in with an assigned wallet to submit, review, or decide a dispute."}
+            </p>
+          ) : !deals.length ? (
+            <div className="m-5 border border-[#e1c27e] bg-[#fff8e4] p-4 text-[11px] leading-5 text-[#67501e]">
+              <strong className="block text-[12px] text-[#2b2118]">
+                Create your first protected project
+              </strong>
+              <ol className="mt-3 space-y-2">
+                <li>1. Choose a real project template.</li>
+                <li>2. Add the team and independent helper.</li>
+                <li>3. Sign the delivery and payment rules.</li>
+              </ol>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="mt-4 min-h-11 bg-[#d58b00] px-4 font-semibold text-white"
+              >
+                Start a project
+              </button>
+            </div>
           ) : null}
         </aside>
 
@@ -1003,13 +1282,40 @@ export function ProjectDashboardClient() {
                   {isDemo ? "Sample project" : `CD-PROJECT-${selected.id.toString()}`}
                 </p>
                 <h1 className="mt-3 font-display text-4xl tracking-[-0.035em] sm:text-5xl">{selected.title}</h1>
+                {selected.category ? (
+                  <span className="mt-3 inline-flex border border-[#d9c8a9] bg-[#fff8e4] px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[0.1em] text-[#8c5a00]">
+                    {selected.category}
+                  </span>
+                ) : null}
               </div>
               {isDemo ? (
                 <span className="w-fit border border-[#ded5c6] bg-white px-3 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#766b5d]">
                   Read-only demo
                 </span>
-              ) : null}
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void copyProjectLink(selected)}
+                    className="inline-flex min-h-11 items-center gap-2 border border-[#cdbfaa] bg-white px-4 text-[11px] font-semibold text-[#574c40] hover:border-[#a66c00]"
+                  >
+                    <Share2 className="h-4 w-4" /> Copy link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadProjectReceipt(selected)}
+                    className="inline-flex min-h-11 items-center gap-2 border border-[#cdbfaa] bg-white px-4 text-[11px] font-semibold text-[#574c40] hover:border-[#a66c00]"
+                  >
+                    <ReceiptText className="h-4 w-4" /> Download receipt
+                  </button>
+                </div>
+              )}
             </div>
+            {selected.summary ? (
+              <p className="mt-5 max-w-3xl text-[13px] leading-6 text-[#675b4e]">
+                {selected.summary}
+              </p>
+            ) : null}
             <div className="mt-7 grid gap-5 sm:grid-cols-3">
               <ProjectFact label="Client" value={labelFor(selected.buyer, selected.client)} />
               <ProjectFact label="Team" value={labelFor(selected.seller, selected.team)} />
@@ -1075,6 +1381,30 @@ export function ProjectDashboardClient() {
                   {activeMilestone.status}
                 </span>
               </div>
+
+              {activeMilestone.deliverable ||
+              activeMilestone.acceptanceCriteria ? (
+                <div className="mt-5 grid gap-4 border-b border-[#ded5c6] pb-5 sm:grid-cols-2">
+                  <div className="border-l-2 border-[#d58b00] pl-4">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#8c5a00]">
+                      Team must deliver
+                    </p>
+                    <p className="mt-2 text-[11px] leading-6 text-[#574c40]">
+                      {activeMilestone.deliverable ??
+                        "The agreed milestone delivery."}
+                    </p>
+                  </div>
+                  <div className="border-l-2 border-emerald-600 pl-4">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.13em] text-emerald-700">
+                      Client approves when
+                    </p>
+                    <p className="mt-2 text-[11px] leading-6 text-[#574c40]">
+                      {activeMilestone.acceptanceCriteria ??
+                        "The delivery matches the agreed project scope."}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 
               {latestChangeRequest && activeMilestone.status === "Pending" ? (
                 <div className="mt-5 border border-amber-300 bg-amber-50 p-4">
@@ -1435,6 +1765,7 @@ export function ProjectDashboardClient() {
       <CreateDealModal
         open={createOpen}
         ownerAddress={address}
+        directoryEntries={directory.entries}
         disabledReason={disabledReason}
         busy={busy}
         onClose={() => setCreateOpen(false)}
