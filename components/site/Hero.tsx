@@ -9,13 +9,13 @@ import { HoneyShader } from "@/components/site/HoneyShader";
 
 const milestones = [
   ["Brand design", "200 USDC", "Approved & paid"],
-  ["Website build", "500 USDC", "Waiting for client"],
+  ["Website build", "500 USDC", "60h review time left"],
   ["Source handoff", "300 USDC", "Upcoming"],
 ] as const;
 
 const heroPhrases = [
   "One delivery at a time.",
-  "Only after approval.",
+  "With a fair review clock.",
   "With USDC ready.",
 ] as const;
 
@@ -40,7 +40,7 @@ export function Hero() {
             phraseClassName="text-amber-700"
           />
           <p className="t-stagger-line t-stagger-line--2 mt-7 max-w-[570px] text-[16px] leading-7 text-slate-600 sm:text-[18px] sm:leading-8">
-            Clients prepare USDC once. Vietnamese teams get paid step by step as each delivery is reviewed and approved.
+            Clients prepare USDC once. Vietnamese teams get paid step by step after approval—or when a fair review window ends without a dispute.
           </p>
           <div className="t-stagger-line t-stagger-line--2 mt-9 flex flex-col gap-3 sm:flex-row">
             <Link href="/dashboard" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-blue-600 px-6 text-[13px] font-semibold !text-white transition-colors hover:bg-blue-500">

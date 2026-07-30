@@ -181,12 +181,17 @@ async function validateEvidenceRole(signerAddress: Address, evidence: NonNullabl
     functionName: "deals",
     args: [dealId],
   });
-  const [buyer, seller, arbitrator, , , , , , milestoneCount, status] = deal;
+  const [buyer, seller, arbitrator, , , , , , , , milestoneCount, , status] = deal;
   if (buyer === "0x0000000000000000000000000000000000000000") return "not_found" as const;
   const signer = signerAddress.toLowerCase();
 
-  if (evidence.kind === "milestone_submission") {
-    if (signer !== seller.toLowerCase()) return "unauthorized" as const;
+  const milestoneKinds = [
+    "milestone_submission",
+    "change_request",
+    "milestone_dispute",
+    "milestone_resolution",
+  ];
+  if (milestoneKinds.includes(evidence.kind)) {
     const milestoneId = BigInt(evidence.milestoneId as string);
     if (milestoneId >= milestoneCount || status !== 1) return "invalid_state" as const;
     const milestone = await publicClient.readContract({
@@ -195,12 +200,26 @@ async function validateEvidenceRole(signerAddress: Address, evidence: NonNullabl
       functionName: "milestones",
       args: [dealId, milestoneId],
     });
-    return milestone[4] === 0 ? "ok" as const : "invalid_state" as const;
+    const milestoneStatus = milestone[7];
+    if (evidence.kind === "milestone_submission") {
+      if (signer !== seller.toLowerCase()) return "unauthorized" as const;
+      return milestoneStatus === 0 ? "ok" as const : "invalid_state" as const;
+    }
+    if (evidence.kind === "change_request") {
+      if (signer !== buyer.toLowerCase()) return "unauthorized" as const;
+      return milestoneStatus === 1 ? "ok" as const : "invalid_state" as const;
+    }
+    if (evidence.kind === "milestone_dispute") {
+      if (signer !== buyer.toLowerCase() && signer !== seller.toLowerCase()) return "unauthorized" as const;
+      return milestoneStatus === 1 ? "ok" as const : "invalid_state" as const;
+    }
+    if (signer !== arbitrator.toLowerCase()) return "unauthorized" as const;
+    return milestoneStatus === 4 ? "ok" as const : "invalid_state" as const;
   }
   if (evidence.kind === "dispute") {
     if (signer !== buyer.toLowerCase() && signer !== seller.toLowerCase()) return "unauthorized" as const;
     return status === 1 ? "ok" as const : "invalid_state" as const;
   }
   if (signer !== arbitrator.toLowerCase()) return "unauthorized" as const;
-  return status === 4 ? "ok" as const : "invalid_state" as const;
+  return "invalid_state" as const;
 }

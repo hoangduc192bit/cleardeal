@@ -9,7 +9,7 @@ const ARC_CHAIN_ID = 5_042_002n;
 const USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
 const ESCROW_ADDRESS =
   process.env.NEXT_PUBLIC_CLEARDEAL_ESCROW_ADDRESS ??
-  "0x3488b4612a5ea84d56a5b41ac53ab7616213444a";
+  "0x9F95E8Cf6D495F6B1898526D8Bb301b3523560fe";
 const EXECUTE = process.env.CLEARDEAL_E2E_EXECUTE === "true";
 const APP_URL = (
   process.env.CLEARDEAL_E2E_APP_URL ??
@@ -93,7 +93,7 @@ async function main() {
   const escrowCode = await ethers.provider.getCode(ESCROW_ADDRESS);
   if (escrowCode === "0x") throw new Error("ClearDealEscrow bytecode is missing.");
 
-  const escrow = await ethers.getContractAt("ClearDealEscrow", ESCROW_ADDRESS, buyer);
+  const escrow = await ethers.getContractAt("ClearDealEscrowV2", ESCROW_ADDRESS, buyer);
   const boundUsdc = await escrow.usdc();
   if (boundUsdc.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
     throw new Error(`Escrow is bound to unexpected USDC: ${boundUsdc}`);
@@ -185,6 +185,8 @@ async function main() {
     arbitrator.address,
     metadataHash,
     refundDeadline,
+    72 * 60 * 60,
+    2,
     [seller.address],
     [amount],
     [dueAt],

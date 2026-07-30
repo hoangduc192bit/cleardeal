@@ -14,15 +14,15 @@ function mapDealStatus(status: number, releasedAmount: bigint): DealStatus {
   if (status === 0) return "Draft";
   if (status === 1) return releasedAmount > 0n ? "In progress" : "Fully funded";
   if (status === 2) return "Completed";
-  if (status === 3) return "Refunded";
-  if (status === 4) return "Disputed";
-  return "Resolved";
+  return "Refunded";
 }
 
 function mapMilestoneStatus(status: number): MilestoneStatus {
   if (status === 1) return "Ready for approval";
   if (status === 2) return "Released";
   if (status === 3) return "Refunded";
+  if (status === 4) return "Disputed";
+  if (status === 5) return "Resolved";
   return "Pending";
 }
 
@@ -70,7 +70,22 @@ export function useClearDeals(participant?: Address) {
           functionName: "deals",
           args: [dealId],
         });
-        const [buyer, seller, arbitrator, totalAmount, releasedAmount, metadataHash, createdAt, refundDeadline, milestoneCount, rawStatus, refundRequested] = rawDeal;
+        const [
+          buyer,
+          seller,
+          arbitrator,
+          totalAmount,
+          releasedAmount,
+          refundedAmount,
+          metadataHash,
+          createdAt,
+          refundDeadline,
+          reviewPeriod,
+          milestoneCount,
+          maxRevisions,
+          rawStatus,
+          refundRequested,
+        ] = rawDeal;
         const metadata = await loadMetadata(metadataHash);
         const milestones = await Promise.all(Array.from({ length: Number(milestoneCount) }, async (_, index) => {
           const rawMilestone = await publicClient.readContract({
@@ -79,13 +94,16 @@ export function useClearDeals(participant?: Address) {
             functionName: "milestones",
             args: [dealId, BigInt(index)],
           });
-          const [recipient, amount, dueAt, deliverableHash, milestoneStatus] = rawMilestone;
+          const [recipient, amount, dueAt, submittedAt, reviewDeadline, revisionCount, deliverableHash, milestoneStatus] = rawMilestone;
           return {
             id: BigInt(index),
             title: metadata?.milestones[index]?.title ?? `Milestone ${index + 1}`,
             recipient,
             amount,
             dueAt: Number(dueAt),
+            submittedAt: Number(submittedAt),
+            reviewDeadline: Number(reviewDeadline),
+            revisionCount: Number(revisionCount),
             deliverableHash: deliverableHash || EMPTY_HASH,
             status: mapMilestoneStatus(milestoneStatus),
           } satisfies ClearDealMilestone;
@@ -101,11 +119,16 @@ export function useClearDeals(participant?: Address) {
           arbitrator,
           totalAmount,
           releasedAmount,
+          refundedAmount,
           metadataHash,
           createdAt: Number(createdAt),
           refundDeadline: Number(refundDeadline),
+          reviewPeriod: Number(reviewPeriod),
+          maxRevisions: Number(maxRevisions),
           refundRequested,
-          status: mapDealStatus(rawStatus, releasedAmount),
+          status: milestones.some((milestone) => milestone.status === "Disputed")
+            ? "Disputed"
+            : mapDealStatus(rawStatus, releasedAmount),
           metadataAvailable: Boolean(metadata),
           milestones,
         } satisfies ClearDealRecord;

@@ -2,8 +2,8 @@ import { FileCheck2, LockKeyhole, RefreshCcw, ShieldCheck } from "lucide-react";
 
 const features = [
   { icon: LockKeyhole, title: "Money is prepared", text: "The complete project budget is deposited before work is paid step by step." },
-  { icon: ShieldCheck, title: "Client approval matters", text: "A delivery cannot pay itself. The client wallet must approve the completed step." },
-  { icon: RefreshCcw, title: "Unpaid money can return", text: "The agreement includes a deadline and a path to return money that has not been paid." },
+  { icon: ShieldCheck, title: "A fair review clock", text: "The client can approve, request a limited revision, or dispute before the agreed review time ends." },
+  { icon: RefreshCcw, title: "Submitted work stays protected", text: "The overall refund deadline cannot take money away from work already submitted for review." },
   { icon: FileCheck2, title: "Proof stays connected", text: "Delivery notes, sample files, approvals, and payment receipts remain connected to the same project." },
 ] as const;
 

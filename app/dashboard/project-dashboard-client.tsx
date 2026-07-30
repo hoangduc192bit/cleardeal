@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  Clock3,
   Download,
   ExternalLink,
   FileText,
@@ -15,7 +16,9 @@ import {
   Paperclip,
   Plus,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
+  Scale,
   Upload,
   X,
 } from "lucide-react";
@@ -103,9 +106,12 @@ const demoProject: ClearDealRecord = {
   arbitrator: DEMO_HELPER,
   totalAmount: 1_000_000_000n,
   releasedAmount: 200_000_000n,
+  refundedAmount: 0n,
   metadataHash: `0x${"1".repeat(64)}`,
   createdAt: Math.floor(Date.now() / 1_000) - 604_800,
   refundDeadline: Math.floor(Date.now() / 1_000) + 2_592_000,
+  reviewPeriod: 259_200,
+  maxRevisions: 2,
   refundRequested: false,
   status: "In progress",
   metadataAvailable: true,
@@ -116,6 +122,9 @@ const demoProject: ClearDealRecord = {
       recipient: DEMO_TEAM,
       amount: 200_000_000n,
       dueAt: Math.floor(Date.now() / 1_000) - 172_800,
+      submittedAt: Math.floor(Date.now() / 1_000) - 345_600,
+      reviewDeadline: Math.floor(Date.now() / 1_000) - 86_400,
+      revisionCount: 0,
       deliverableHash: `0x${"a".repeat(64)}`,
       status: "Released",
     },
@@ -125,6 +134,9 @@ const demoProject: ClearDealRecord = {
       recipient: DEMO_TEAM,
       amount: 500_000_000n,
       dueAt: Math.floor(Date.now() / 1_000) + 432_000,
+      submittedAt: Math.floor(Date.now() / 1_000) - 43_200,
+      reviewDeadline: Math.floor(Date.now() / 1_000) + 216_000,
+      revisionCount: 1,
       deliverableHash: `0x${"b".repeat(64)}`,
       status: "Ready for approval",
     },
@@ -134,6 +146,9 @@ const demoProject: ClearDealRecord = {
       recipient: DEMO_TEAM,
       amount: 300_000_000n,
       dueAt: Math.floor(Date.now() / 1_000) + 1_209_600,
+      submittedAt: 0,
+      reviewDeadline: 0,
+      revisionCount: 0,
       deliverableHash: `0x${"0".repeat(64)}`,
       status: "Pending",
     },
@@ -144,6 +159,23 @@ interface TransactionState {
   status: "pending" | "confirmed" | "error";
   message: string;
   hash?: Hash;
+}
+
+type DecisionKind = "change_request" | "milestone_dispute" | "milestone_resolution";
+
+interface DecisionTarget {
+  kind: DecisionKind;
+  deal: ClearDealRecord;
+  milestone: ClearDealMilestone;
+}
+
+function reviewTimeLeft(deadline: number, now: number) {
+  const seconds = Math.max(0, deadline - now);
+  if (seconds === 0) return "Review time ended";
+  const hours = Math.floor(seconds / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  if (hours >= 24) return `${Math.floor(hours / 24)}d ${hours % 24}h left`;
+  return `${hours}h ${minutes}m left`;
 }
 
 function sameAddress(left?: string, right?: string) {
@@ -225,6 +257,10 @@ export function ProjectDashboardClient() {
   }>();
   const [evidenceReference, setEvidenceReference] = useState("");
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
+  const [decisionTarget, setDecisionTarget] = useState<DecisionTarget>();
+  const [decisionNote, setDecisionNote] = useState("");
+  const [resolutionAward, setResolutionAward] = useState("");
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1_000));
 
   useEffect(() => {
     if (!deals.length) return setSelectedId(undefined);
@@ -232,6 +268,14 @@ export function ProjectDashboardClient() {
       setSelectedId(deals[0].id);
     }
   }, [deals, selectedId]);
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setNow(Math.floor(Date.now() / 1_000)),
+      30_000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
 
   const liveSelected =
     deals.find((deal) => deal.id === selectedId) ?? deals[0];
@@ -243,6 +287,7 @@ export function ProjectDashboardClient() {
   } = useDealActivity(isDemo ? undefined : selected.id, transaction?.hash);
 
   const activeMilestone =
+    selected.milestones.find((milestone) => milestone.status === "Disputed") ??
     selected.milestones.find((milestone) => milestone.status === "Ready for approval") ??
     selected.milestones.find((milestone) => milestone.status === "Pending") ??
     selected.milestones.at(-1);
@@ -404,6 +449,8 @@ export function ProjectDashboardClient() {
           input.arbitrator,
           metadataHash,
           BigInt(Math.floor(Date.parse(`${input.refundDeadline}T23:59:59Z`) / 1_000)),
+          input.reviewHours * 3_600,
+          input.maxRevisions,
           input.milestones.map(() => input.seller),
           input.milestones.map((milestone) => parseUnits(milestone.amount, 6)),
           input.milestones.map((milestone) =>
@@ -477,6 +524,126 @@ export function ProjectDashboardClient() {
         args: [deal.id],
       });
     }, "refund request");
+  }
+
+  async function finalizeMilestone(deal: ClearDealRecord, milestone: ClearDealMilestone) {
+    await runAction(async () => {
+      const ready = await requireReady();
+      return writeContractAsync({
+        address: ready.contract,
+        abi: clearDealEscrowAbi,
+        chainId: arcTestnet.id,
+        functionName: "finalizeMilestone",
+        args: [deal.id, milestone.id],
+      });
+    }, `finalize ${formatUsdc(milestone.amount)} after review`);
+  }
+
+  async function storeDecisionEvidence(target: DecisionTarget, reference: string) {
+    const ready = await requireReady();
+    const evidence: ClearDealEvidence = {
+      version: 1,
+      kind: target.kind,
+      dealId: target.deal.id.toString(),
+      milestoneId: target.milestone.id.toString(),
+      reference,
+      submittedAt: Date.now(),
+    };
+    const evidenceHash = hashClearDealEvidence(evidence);
+    const authorization: StoreClearDealEvidenceAuthorization = {
+      signerAddress: ready.address,
+      evidenceHash,
+      dealId: evidence.dealId,
+      kind: evidence.kind,
+      milestoneId: evidence.milestoneId,
+      requestId: crypto.randomUUID(),
+      issuedAt: Date.now(),
+    };
+    setTransaction({
+      status: "pending",
+      message: "Sign this decision note. This signature does not move USDC.",
+    });
+    const signature = await signMessageAsync({
+      message: buildStoreClearDealEvidenceMessage(authorization),
+    });
+    const response = await fetch("/api/deals/evidence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...authorization,
+        evidence,
+        signature,
+        attachmentPayloads: [],
+      }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? "The signed decision note could not be stored.");
+    }
+    return { ready, evidenceHash };
+  }
+
+  async function submitDecision() {
+    if (!decisionTarget) return;
+    const note = decisionNote.trim();
+    if (!note) return;
+    setBusy(true);
+    try {
+      const sellerAward = decisionTarget.kind === "milestone_resolution"
+        ? parseUnits(resolutionAward || "0", 6)
+        : 0n;
+      if (
+        decisionTarget.kind === "milestone_resolution" &&
+        (sellerAward < 0n || sellerAward > decisionTarget.milestone.amount)
+      ) {
+        throw new Error("The team award must be between 0 and the milestone amount.");
+      }
+      const { ready, evidenceHash } = await storeDecisionEvidence(decisionTarget, note);
+      let functionName:
+        | "requestChanges"
+        | "openMilestoneDispute"
+        | "resolveMilestoneDispute";
+      let args: readonly unknown[];
+      let message: string;
+      if (decisionTarget.kind === "change_request") {
+        functionName = "requestChanges";
+        args = [decisionTarget.deal.id, decisionTarget.milestone.id, evidenceHash];
+        message = "Change request";
+      } else if (decisionTarget.kind === "milestone_dispute") {
+        functionName = "openMilestoneDispute";
+        args = [decisionTarget.deal.id, decisionTarget.milestone.id, evidenceHash];
+        message = "Milestone dispute";
+      } else {
+        functionName = "resolveMilestoneDispute";
+        args = [
+          decisionTarget.deal.id,
+          decisionTarget.milestone.id,
+          sellerAward,
+          evidenceHash,
+        ];
+        message = "Dispute decision";
+      }
+      await waitFor(
+        await writeContractAsync({
+          address: ready.contract,
+          abi: clearDealEscrowAbi,
+          chainId: arcTestnet.id,
+          functionName,
+          args,
+        }),
+        message,
+      );
+      setDecisionTarget(undefined);
+      setDecisionNote("");
+      setResolutionAward("");
+    } catch (cause) {
+      setTransaction({
+        status: "error",
+        message: cause instanceof Error ? cause.message : "The milestone decision failed.",
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submitDelivery() {
@@ -688,7 +855,7 @@ export function ProjectDashboardClient() {
           </div>
 
           <p className="py-7 font-display text-2xl leading-tight text-[#382d22]">
-            Funds are released only after each delivery is approved.
+            Each delivery is paid after approval—or automatically when its review time ends without a dispute.
           </p>
           {isDemo ? (
             <p className="mb-7 border-l-2 border-[#d58b00] pl-4 text-[11px] leading-6 text-[#766b5d]">
@@ -720,6 +887,26 @@ export function ProjectDashboardClient() {
                   <p className="mt-2 text-[12px] leading-5 text-[#766b5d]">
                     Due {formatDate(activeMilestone.dueAt)} · {formatUsdc(activeMilestone.amount)}
                   </p>
+                  {activeMilestone.status === "Ready for approval" ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px]">
+                      <span className={`inline-flex items-center gap-1.5 border px-2.5 py-1.5 font-mono ${
+                        activeMilestone.reviewDeadline <= now
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-blue-200 bg-blue-50 text-blue-700"
+                      }`}>
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {reviewTimeLeft(activeMilestone.reviewDeadline, now)}
+                      </span>
+                      <span className="border border-[#ded5c6] px-2.5 py-1.5 text-[#766b5d]">
+                        Revision {activeMilestone.revisionCount}/{selected.maxRevisions}
+                      </span>
+                    </div>
+                  ) : activeMilestone.status === "Disputed" ? (
+                    <p className="mt-3 inline-flex items-center gap-2 border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] text-rose-700">
+                      <Scale className="h-3.5 w-3.5" />
+                      Payment paused until the dispute helper decides this milestone.
+                    </p>
+                  ) : null}
                 </div>
                 <span className="w-fit border border-[#e5c06d] bg-[#fff5d9] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8a5900]">
                   {activeMilestone.status}
@@ -824,16 +1011,79 @@ export function ProjectDashboardClient() {
                     }}
                     className="min-h-12 bg-[#d58b00] px-6 text-[13px] font-semibold text-white hover:bg-[#bd7b00] disabled:opacity-45"
                   >
-                    Submit this delivery
+                    {activeMilestone.revisionCount > 0 ? "Submit revised delivery" : "Submit this delivery"}
                   </button>
-                ) : activeMilestone.status === "Ready for approval" && role === "Client" ? (
+                ) : activeMilestone.status === "Ready for approval" && activeMilestone.reviewDeadline <= now ? (
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void releaseMilestone(selected, activeMilestone)}
-                    className="min-h-12 bg-[#d58b00] px-6 text-[13px] font-semibold text-white hover:bg-[#bd7b00] disabled:opacity-45"
+                    onClick={() => void finalizeMilestone(selected, activeMilestone)}
+                    className="min-h-12 bg-emerald-700 px-6 text-[13px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-45"
                   >
-                    Approve & release {formatUsdc(activeMilestone.amount)}
+                    Release after completed review · {formatUsdc(activeMilestone.amount)}
+                  </button>
+                ) : activeMilestone.status === "Ready for approval" && role === "Client" ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void releaseMilestone(selected, activeMilestone)}
+                      className="min-h-12 flex-1 bg-[#d58b00] px-5 text-[12px] font-semibold text-white hover:bg-[#bd7b00] disabled:opacity-45"
+                    >
+                      Approve & release {formatUsdc(activeMilestone.amount)}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || activeMilestone.revisionCount >= selected.maxRevisions}
+                      onClick={() => {
+                        setDecisionTarget({ kind: "change_request", deal: selected, milestone: activeMilestone });
+                        setDecisionNote("");
+                      }}
+                      className="min-h-12 flex-1 border border-[#a66c00] px-5 text-[12px] font-semibold text-[#8c5a00] hover:bg-[#fff5d9] disabled:opacity-40"
+                    >
+                      <span className="inline-flex items-center gap-2"><RotateCcw className="h-4 w-4" /> Request changes</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setDecisionTarget({ kind: "milestone_dispute", deal: selected, milestone: activeMilestone });
+                        setDecisionNote("");
+                      }}
+                      className="min-h-12 flex-1 border border-rose-300 px-5 text-[12px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                    >
+                      Open dispute
+                    </button>
+                  </>
+                ) : activeMilestone.status === "Ready for approval" && role === "Team" ? (
+                  <>
+                    <p className="flex min-h-12 flex-1 items-center text-[11px] leading-5 text-[#766b5d]">
+                      The client can approve, request a revision, or dispute before the clock ends.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setDecisionTarget({ kind: "milestone_dispute", deal: selected, milestone: activeMilestone });
+                        setDecisionNote("");
+                      }}
+                      className="min-h-12 border border-rose-300 px-5 text-[12px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                    >
+                      Open dispute
+                    </button>
+                  </>
+                ) : activeMilestone.status === "Disputed" && role === "Dispute helper" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setDecisionTarget({ kind: "milestone_resolution", deal: selected, milestone: activeMilestone });
+                      setDecisionNote("");
+                      setResolutionAward(formatUnits(activeMilestone.amount, 6));
+                    }}
+                    className="min-h-12 bg-[#2b2118] px-6 text-[13px] font-semibold text-white hover:bg-black disabled:opacity-45"
+                  >
+                    Decide this milestone
                   </button>
                 ) : (
                   <p className="flex min-h-12 items-center text-[12px] text-[#766b5d]">
@@ -1069,6 +1319,111 @@ export function ProjectDashboardClient() {
           </form>
         </div>
       ) : null}
+
+      {decisionTarget ? (
+        <div className="fixed inset-0 z-[105] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Milestone decision">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitDecision();
+            }}
+            className="w-full max-w-[560px] border border-[#ded5c6] bg-[#fffcf0] shadow-2xl"
+          >
+            <header className="flex items-start justify-between border-b border-[#ded5c6] p-6">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#a66c00]">
+                  {decisionTarget.kind === "change_request"
+                    ? "Revision request"
+                    : decisionTarget.kind === "milestone_dispute"
+                      ? "Payment protection"
+                      : "Independent decision"}
+                </p>
+                <h2 className="mt-2 font-display text-3xl">
+                  {decisionTarget.kind === "change_request"
+                    ? "What needs to change?"
+                    : decisionTarget.kind === "milestone_dispute"
+                      ? "Why should payment pause?"
+                      : "How should this milestone be paid?"}
+                </h2>
+                <p className="mt-2 text-[11px] leading-5 text-[#766b5d]">
+                  {decisionTarget.milestone.title} · {formatUsdc(decisionTarget.milestone.amount)}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setDecisionTarget(undefined)}
+                className="grid h-10 w-10 place-items-center border border-[#ded5c6]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="grid gap-5 p-6">
+              {decisionTarget.kind === "milestone_resolution" ? (
+                <label className="grid gap-2">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">Pay the team</span>
+                  <div className="relative">
+                    <input
+                      required
+                      min="0"
+                      max={formatUnits(decisionTarget.milestone.amount, 6)}
+                      step="0.000001"
+                      type="number"
+                      value={resolutionAward}
+                      onChange={(event) => setResolutionAward(event.target.value)}
+                      className="cd-input w-full pr-16 font-mono"
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[#766b5d]">USDC</span>
+                  </div>
+                  <span className="text-[10px] leading-5 text-[#766b5d]">
+                    The remainder returns to the client. The total can never exceed this milestone.
+                  </span>
+                </label>
+              ) : null}
+              <label className="grid gap-2">
+                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">
+                  {decisionTarget.kind === "milestone_resolution" ? "Decision and reason" : "Clear reason"}
+                </span>
+                <textarea
+                  required
+                  maxLength={1_000}
+                  rows={5}
+                  value={decisionNote}
+                  onChange={(event) => setDecisionNote(event.target.value)}
+                  placeholder={
+                    decisionTarget.kind === "change_request"
+                      ? "List the exact agreed item that is missing or needs correction."
+                      : decisionTarget.kind === "milestone_dispute"
+                        ? "Describe the disagreement and point to the submitted evidence."
+                        : "Explain the evidence reviewed and why this payment split is fair."
+                  }
+                  className="cd-input resize-y"
+                />
+              </label>
+              <p className="border border-blue-200 bg-blue-50 p-3 text-[10px] leading-5 text-blue-900">
+                Your wallet signs this note, then its exact fingerprint is recorded on Arc with the decision. Signing the note alone does not move USDC.
+              </p>
+            </div>
+            <footer className="flex justify-end gap-3 border-t border-[#ded5c6] p-6">
+              <button type="button" disabled={busy} onClick={() => setDecisionTarget(undefined)} className="min-h-11 border border-[#ded5c6] px-5 text-[12px] font-semibold">Cancel</button>
+              <button
+                type="submit"
+                disabled={busy || !decisionNote.trim() || (decisionTarget.kind === "milestone_resolution" && resolutionAward === "")}
+                className="min-h-11 bg-[#2b2118] px-5 text-[12px] font-semibold text-white disabled:opacity-45"
+              >
+                {busy
+                  ? "Waiting for wallet…"
+                  : decisionTarget.kind === "change_request"
+                    ? "Sign & request changes"
+                    : decisionTarget.kind === "milestone_dispute"
+                      ? "Sign & pause payment"
+                      : "Sign & resolve milestone"}
+              </button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -1114,7 +1469,17 @@ function MoneyRow({ label, value, positive = false, accent = false }: { label: s
 }
 
 function MilestoneStep({ milestone, number, active }: { milestone: ClearDealMilestone; number: number; active: boolean }) {
-  const released = milestone.status === "Released";
+  const released = milestone.status === "Released" || milestone.status === "Resolved";
+  const disputed = milestone.status === "Disputed";
+  const stepLabel = released
+    ? milestone.status === "Resolved" ? "Resolved" : "Approved & paid"
+    : disputed
+      ? "Payment paused"
+      : milestone.status === "Ready for approval"
+        ? "Client review"
+        : milestone.revisionCount > 0
+          ? `Revision ${milestone.revisionCount}`
+          : "Upcoming";
   return (
     <div className={`relative min-w-0 px-4 py-3 text-center ${active ? "bg-[#fff7df]" : ""}`}>
       <span className={`mx-auto grid h-10 w-10 place-items-center rounded-full border font-display text-lg ${
@@ -1125,9 +1490,15 @@ function MilestoneStep({ milestone, number, active }: { milestone: ClearDealMile
       <p className="mt-3 truncate font-display text-xl">{milestone.title}</p>
       <p className="mt-1 font-mono text-[10px]">{formatUsdc(milestone.amount)}</p>
       <span className={`mt-3 inline-flex border px-2 py-1 font-mono text-[8px] uppercase tracking-[0.1em] ${
-        released ? "border-emerald-200 bg-emerald-50 text-emerald-700" : active ? "border-amber-300 bg-amber-50 text-amber-800" : "border-[#ded5c6] text-[#766b5d]"
+        released
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : disputed
+            ? "border-rose-200 bg-rose-50 text-rose-700"
+            : active
+              ? "border-amber-300 bg-amber-50 text-amber-800"
+              : "border-[#ded5c6] text-[#766b5d]"
       }`}>
-        {released ? "Approved & paid" : milestone.status === "Ready for approval" ? "Waiting for client" : "Upcoming"}
+        {stepLabel}
       </span>
     </div>
   );

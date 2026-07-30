@@ -11,6 +11,8 @@ export interface CreateDealInput {
   seller: `0x${string}`;
   arbitrator: `0x${string}`;
   refundDeadline: string;
+  reviewHours: number;
+  maxRevisions: number;
   milestones: Array<{ title: string; amount: string; dueDate: string }>;
 }
 
@@ -35,6 +37,8 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
   const [seller, setSeller] = useState("");
   const [arbitrator, setArbitrator] = useState("");
   const [refundDeadline, setRefundDeadline] = useState(dateAfter(45));
+  const [reviewHours, setReviewHours] = useState(72);
+  const [maxRevisions, setMaxRevisions] = useState(2);
   const [formError, setFormError] = useState<string>();
   const [milestones, setMilestones] = useState([
     { title: "Brand design", amount: "200", dueDate: dateAfter(10) },
@@ -64,6 +68,12 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
     if (total <= 0 || milestones.some((milestone) => !milestone.title.trim() || Number(milestone.amount) <= 0)) {
       return setFormError("Every delivery step needs a title and a positive USDC amount.");
     }
+    if (!Number.isInteger(reviewHours) || reviewHours < 1 || reviewHours > 720) {
+      return setFormError("The review window must be between 1 hour and 30 days.");
+    }
+    if (!Number.isInteger(maxRevisions) || maxRevisions < 0 || maxRevisions > 10) {
+      return setFormError("The revision limit must be between 0 and 10.");
+    }
 
     try {
       await onCreate({
@@ -73,6 +83,8 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
         seller,
         arbitrator,
         refundDeadline,
+        reviewHours,
+        maxRevisions,
         milestones: milestones.map((milestone) => ({ ...milestone, title: milestone.title.trim() })),
       });
       onClose();
@@ -85,7 +97,7 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="create-deal-title">
       <form onSubmit={submit} className="cd-scrollbar max-h-[92dvh] w-full max-w-[760px] overflow-y-auto border border-white/[0.14] bg-[#090f16] shadow-[0_30px_120px_rgba(0,0,0,.7)]">
         <div className="flex items-start justify-between border-b border-white/[0.1] p-6">
-          <div><h2 id="create-deal-title" className="font-display text-3xl tracking-[-0.03em] text-white">Create a protected project</h2><p className="mt-2 text-[13px] text-white/42">Set the work, price, and delivery steps. ClearDeal pays each step only after approval.</p></div>
+          <div><h2 id="create-deal-title" className="font-display text-3xl tracking-[-0.03em] text-white">Create a protected project</h2><p className="mt-2 text-[13px] text-white/42">Set the work, price, and review rules. A submitted step pays after approval or when its review window ends without a dispute.</p></div>
           <button type="button" disabled={busy} onClick={onClose} className="grid h-9 w-9 place-items-center border border-white/[0.1] text-white/50 hover:text-white disabled:opacity-40" aria-label="Close create deal"><X className="h-4 w-4" /></button>
         </div>
 
@@ -96,7 +108,24 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
           <Field label="Team payment wallet"><input required value={seller} onChange={(event) => setSeller(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
           <Field label="Independent dispute helper"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
           <Field label="Refund deadline"><input required type="date" min={dateAfter(2)} value={refundDeadline} onChange={(event) => setRefundDeadline(event.target.value)} className="cd-input" /></Field>
+          <Field label="Client review time">
+            <select value={reviewHours} onChange={(event) => setReviewHours(Number(event.target.value))} className="cd-input">
+              <option value={24}>24 hours</option>
+              <option value={48}>48 hours</option>
+              <option value={72}>72 hours (recommended)</option>
+              <option value={168}>7 days</option>
+            </select>
+          </Field>
+          <Field label="Included revision rounds">
+            <select value={maxRevisions} onChange={(event) => setMaxRevisions(Number(event.target.value))} className="cd-input">
+              <option value={0}>No revision round</option>
+              <option value={1}>1 revision round</option>
+              <option value={2}>2 revision rounds (recommended)</option>
+              <option value={3}>3 revision rounds</option>
+            </select>
+          </Field>
           <div className="border border-amber-400/15 bg-amber-400/[0.05] p-4 text-[11px] leading-5 text-amber-100/60">Arc Testnet only. Wallets and amounts are public, and test USDC has no real-world value.</div>
+          <div className="border border-blue-400/15 bg-blue-400/[0.05] p-4 text-[11px] leading-5 text-blue-100/60">If the client neither requests changes nor opens a dispute before the review time ends, anyone can finalize that step and the contract pays the team.</div>
         </div>
 
         <div className="border-t border-white/[0.1] p-6">

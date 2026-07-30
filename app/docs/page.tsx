@@ -8,9 +8,10 @@ import { clearDealEscrowAddress } from "@/lib/cleardeal-contract";
 const lifecycle = [
   ["Created", "The project records the client, team, dispute helper, delivery steps, amounts, and deadlines."],
   ["Funded", "The client deposits the complete USDC budget into the project contract."],
-  ["Submitted", "The team adds a signed delivery note and optional sample files for one step."],
-  ["Paid", "The client approves the step and its USDC amount is sent to the team wallet."],
-  ["Completed", "Every delivery step has been approved and paid."],
+  ["Submitted", "The team adds a signed delivery note and optional sample files. The agreed review clock starts."],
+  ["Reviewed", "The client approves, requests a limited revision, or opens a dispute for that step."],
+  ["Paid", "Approval—or an objection-free review deadline—allows the step’s USDC to reach the team wallet."],
+  ["Completed", "Every delivery step is paid, refunded, or independently resolved."],
 ] as const;
 
 export default function DocsPage() {
@@ -40,7 +41,7 @@ export default function DocsPage() {
               Step-by-step USDC payments for real project work.
             </h1>
             <p className="mt-6 max-w-3xl text-[15px] leading-7 text-[#766b5d]">
-              ClearDeal helps an international client and a Vietnamese team agree on a project, prepare the money, submit work, and pay each approved delivery.
+              ClearDeal helps an international client and a Vietnamese team agree on a project, prepare the money, submit work, and review each delivery without letting silence block payment forever.
             </p>
           </section>
 
@@ -57,9 +58,9 @@ export default function DocsPage() {
 
           <DocSection id="roles" title="Who does what">
             <div className="grid gap-px border border-[#ded5c6] bg-[#ded5c6] md:grid-cols-3">
-              <Info title="Client" items={["Creates the project", "Deposits USDC", "Approves finished work", "Can request unpaid funds back"]} />
-              <Info title="Vietnam team" items={["Sees the prepared budget", "Submits delivery proof", "Receives each approved payment"]} />
-              <Info title="Dispute helper" items={["Uses a separate wallet", "Steps in only when both sides disagree", "Splits the unpaid balance if needed"]} />
+              <Info title="Client" items={["Creates the project", "Deposits USDC", "Approves, requests changes, or disputes", "Can reclaim only work that was never submitted"]} />
+              <Info title="Vietnam team" items={["Sees the prepared budget", "Submits delivery proof", "Can release payment after review time ends"]} />
+              <Info title="Dispute helper" items={["Uses a separate wallet", "Steps in only for a disputed milestone", "Splits only that milestone if needed"]} />
             </div>
           </DocSection>
 
@@ -110,7 +111,7 @@ export default function DocsPage() {
               <Fact label="Network" value="Arc Testnet" />
               <Fact label="Chain ID" value="5042002" />
               <Fact label="Payment" value="USDC" />
-              <Fact label="Main story" value="Pay after approval" />
+              <Fact label="Main story" value="Fair review, then pay" />
             </dl>
           </DocSection>
 
@@ -121,7 +122,7 @@ export default function DocsPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-amber-950">Testnet safety notice</h3>
                   <p className="mt-2 text-[13px] leading-7 text-amber-900">
-                    ClearDeal performs real Testnet wallet signatures, crosschain USDC bridging, USDC approvals, project funding, delivery submissions, payments, refunds, and dispute resolution. Test USDC has no real-world value, and the custom contract is not professionally audited.
+                    ClearDeal performs real Testnet wallet signatures, crosschain USDC bridging, project funding, signed delivery submissions, bounded revisions, timed releases, refunds, and milestone dispute resolution. Test USDC has no real-world value, and the custom contract is not professionally audited.
                   </p>
                 </div>
               </div>

@@ -1,21 +1,21 @@
 # ClearDeal Arc Testnet proof
 
-ClearDeal completed a public end-to-end milestone payment on Arc Testnet on
-July 26, 2026.
+ClearDealEscrowV2 completed a public end-to-end milestone payment on Arc
+Testnet on July 30, 2026.
 
 ## Result
 
 - Deal ID: `0`
 - Buyer: `0x27Bd802E4A53c345044cC8858fD78E324767A810`
-- Seller: `0x44C8B6BFd6B37610a0873eB66D31272eB738D910`
+- Seller: `0x381BD53Cf7bD1A206E641feD66D0C76B019A9845`
 - Project amount: `0.02` testnet USDC
 - Final deal state: `Completed`
 - Final milestone state: `Released`
 - Released amount recorded by the contract: `0.02` testnet USDC
 - Metadata hash:
-  `0x18f77d8455ede8b9a49ebacb4e7ec54c6cf2488b96d445b99556a010eed1d1c9`
+  `0xbc90bb720d7adda31b36c9a30a4267599e8232957493eccb0d0f94789029db2e`
 - Delivery hash:
-  `0xe60abdb0dc5a92ed99c67432202e8913816edba14124e453f908062bd3040bdd`
+  `0x7e162d9ae4fe95836e755537e0c8a48d1d56bd5453c02e943116f1fda654dc2d`
 
 Arc uses USDC for both the payment and network fees. The seller therefore
 received the full `0.02` USDC milestone from the escrow while paying the
@@ -23,12 +23,12 @@ submission transaction fee from its USDC-denominated Arc balance.
 
 ## Public transactions
 
-- [Create project](https://testnet.arcscan.app/tx/0x10ab96f60ec36277083cd5299e8b0d825eb2c7a0d430274e5cf8cdbd70310307)
-- [Approve 0.02 USDC](https://testnet.arcscan.app/tx/0xd34c66a09419d7a4ef5e70fcce07f6a0171fdcf5f0356f0f89b03441ff55ba9e)
-- [Fund escrow](https://testnet.arcscan.app/tx/0x97172aeb843c5a954cba3fbdcd5212aba1d51c60a7d87713df093daf28356a86)
-- [Submit milestone evidence hash](https://testnet.arcscan.app/tx/0xb907a20df01f768166bdd0c1c23853be7db7f93c66dbd016d35c1f89c65f1d84)
-- [Approve and release milestone](https://testnet.arcscan.app/tx/0xa2f6ae2f6930fe99b063ed17107401d011886ec1bfd87da9fd65b618871daa7f)
-- [Verified ClearDealEscrow contract](https://testnet.arcscan.app/address/0x3488b4612a5ea84d56a5b41ac53ab7616213444a)
+- [Create project](https://testnet.arcscan.app/tx/0x0e075e040e6d390002218bee0470304bcd081b8f9b4c509a76019ec5bcb4ea6a)
+- [Approve 0.02 USDC](https://testnet.arcscan.app/tx/0x96a2c271bb192f48a599e05610b96e8d3e851d9e15f7650e25a475c5811e9a86)
+- [Fund escrow](https://testnet.arcscan.app/tx/0xeb7c95ccc49a3f0150ca6ceb0fbb2bd2c227d833fbcee40bb6f46b7518d615bc)
+- [Submit milestone evidence hash](https://testnet.arcscan.app/tx/0xb0e7e6bca8a9c2bc985caff9bec38685c26e52ab293bfe021c9874a26b6aba11)
+- [Approve and release milestone](https://testnet.arcscan.app/tx/0x00cb1013195727c950eeffd102c2bbe7f329a4650dea882e7be42ba5e88b997f)
+- [Verified ClearDealEscrowV2 contract](https://testnet.arcscan.app/address/0x9F95E8Cf6D495F6B1898526D8Bb301b3523560fe#code)
 
 ## Reproduce
 
@@ -40,4 +40,3 @@ $env:CLEARDEAL_E2E_APP_URL="https://cleardeal-app.vercel.app"
 $env:CLEARDEAL_E2E_EXECUTE="true"
 npm run e2e:cleardeal:testnet
 ```
-

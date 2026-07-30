@@ -36,8 +36,10 @@ async function loadEvidence(hash: Hex) {
 
 function evidenceHashFor(event: ContractEvent) {
   if (event.eventName === "MilestoneSubmitted") return event.args.deliverableHash as Hex;
-  if (event.eventName === "DisputeOpened") return event.args.reasonHash as Hex;
-  if (event.eventName === "DisputeResolved") return event.args.resolutionHash as Hex;
+  if (event.eventName === "ChangesRequested" || event.eventName === "MilestoneDisputed") {
+    return event.args.reasonHash as Hex;
+  }
+  if (event.eventName === "MilestoneResolved") return event.args.resolutionHash as Hex;
   return undefined;
 }
 
@@ -46,12 +48,16 @@ function activityCopy(event: ContractEvent, evidence?: StoredClearDealEvidence) 
   const reference = evidence?.evidence.reference;
   if (event.eventName === "DealCreated") return { title: "Deal created", detail: `${formatUsdc(args.totalAmount as bigint)} agreement opened by ${shortAddress(args.buyer as `0x${string}`)}.` };
   if (event.eventName === "DealFunded") return { title: "Escrow funded", detail: `${formatUsdc(args.amount as bigint)} locked in ClearDealEscrow.` };
-  if (event.eventName === "MilestoneSubmitted") return { title: `Milestone #${Number(args.milestoneId) + 1} submitted`, detail: reference ?? "Wallet-signed evidence is unavailable for this submission." };
-  if (event.eventName === "MilestoneReleased") return { title: `Milestone #${Number(args.milestoneId) + 1} released`, detail: `${formatUsdc(args.amount as bigint)} paid to ${shortAddress(args.recipient as `0x${string}`)}.` };
+  if (event.eventName === "MilestoneSubmitted") return { title: `Milestone #${Number(args.milestoneId) + 1} submitted`, detail: reference ?? "Wallet-signed delivery evidence recorded. The review window is now running." };
+  if (event.eventName === "ChangesRequested") return { title: `Changes requested for milestone #${Number(args.milestoneId) + 1}`, detail: `Revision ${Number(args.revisionCount)} was requested before payment.` };
+  if (event.eventName === "MilestoneReleased") return {
+    title: `${args.automatic ? "Automatically released" : "Approved"} milestone #${Number(args.milestoneId) + 1}`,
+    detail: `${formatUsdc(args.amount as bigint)} paid to ${shortAddress(args.recipient as `0x${string}`)}.`,
+  };
   if (event.eventName === "RefundRequested") return { title: "Refund requested", detail: "The buyer requested return of unreleased escrow." };
   if (event.eventName === "DealRefunded") return { title: "Escrow refunded", detail: `${formatUsdc(args.amount as bigint)} returned to the buyer.` };
-  if (event.eventName === "DisputeOpened") return { title: "Dispute opened", detail: reference ?? `Opened by ${shortAddress(args.openedBy as `0x${string}`)}.` };
-  return { title: "Dispute resolved", detail: reference ?? `${formatUsdc(args.sellerAward as bigint)} awarded to seller; ${formatUsdc(args.buyerRefund as bigint)} returned to buyer.` };
+  if (event.eventName === "MilestoneDisputed") return { title: `Milestone #${Number(args.milestoneId) + 1} disputed`, detail: reference ?? `Opened by ${shortAddress(args.openedBy as `0x${string}`)}. Automatic payment is paused.` };
+  return { title: `Milestone #${Number(args.milestoneId) + 1} resolved`, detail: reference ?? `${formatUsdc(args.sellerAward as bigint)} awarded to the team; ${formatUsdc(args.buyerRefund as bigint)} returned to the client.` };
 }
 
 export function useDealActivity(dealId?: bigint, refreshKey?: Hash) {

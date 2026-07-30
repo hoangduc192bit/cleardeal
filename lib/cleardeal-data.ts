@@ -1,7 +1,7 @@
 import { formatUnits, type Address, type Hex } from "viem";
 
-export type DealStatus = "Draft" | "Fully funded" | "In progress" | "Completed" | "Refunded" | "Disputed" | "Resolved";
-export type MilestoneStatus = "Pending" | "Ready for approval" | "Released" | "Refunded";
+export type DealStatus = "Draft" | "Fully funded" | "In progress" | "Completed" | "Refunded" | "Disputed";
+export type MilestoneStatus = "Pending" | "Ready for approval" | "Released" | "Refunded" | "Disputed" | "Resolved";
 
 export interface ClearDealMilestone {
   id: bigint;
@@ -9,6 +9,9 @@ export interface ClearDealMilestone {
   recipient: Address;
   amount: bigint;
   dueAt: number;
+  submittedAt: number;
+  reviewDeadline: number;
+  revisionCount: number;
   deliverableHash: Hex;
   status: MilestoneStatus;
 }
@@ -23,9 +26,12 @@ export interface ClearDealRecord {
   arbitrator: Address;
   totalAmount: bigint;
   releasedAmount: bigint;
+  refundedAmount: bigint;
   metadataHash: Hex;
   createdAt: number;
   refundDeadline: number;
+  reviewPeriod: number;
+  maxRevisions: number;
   refundRequested: boolean;
   status: DealStatus;
   metadataAvailable: boolean;
@@ -40,12 +46,12 @@ export function formatUsdc(value: bigint) {
 }
 
 export function completedMilestones(deal: ClearDealRecord) {
-  return deal.milestones.filter((milestone) => milestone.status === "Released").length;
+  return deal.milestones.filter((milestone) => milestone.status === "Released" || milestone.status === "Resolved").length;
 }
 
 export function escrowBalance(deal: ClearDealRecord) {
-  if (deal.status === "Draft" || deal.status === "Refunded" || deal.status === "Resolved") return 0n;
-  return deal.totalAmount - deal.releasedAmount;
+  if (deal.status === "Draft" || deal.status === "Refunded") return 0n;
+  return deal.totalAmount - deal.releasedAmount - deal.refundedAmount;
 }
 
 export function shortAddress(address: Address) {

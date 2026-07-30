@@ -1,13 +1,14 @@
 # ClearDeal
 
 ClearDeal helps an international client pay a Vietnamese team safely, one
-approved delivery at a time.
+reviewed delivery at a time.
 
 The client creates a project, divides the budget into clear delivery steps,
 and deposits the full USDC amount once. The team submits each completed
-delivery with a signed note and optional sample files. The client reviews the
-result and releases only that step's payment. Unreleased USDC stays in the
-verified ClearDeal contract on Arc Testnet.
+delivery with a signed note and optional sample files. The client can approve,
+request a limited revision, or open a milestone dispute. If the review window
+ends without either objection, that step becomes permissionlessly releasable.
+Unreleased USDC stays in the verified ClearDeal contract on Arc Testnet.
 
 Example:
 
@@ -23,9 +24,11 @@ This gives both sides a simple promise:
 
 - The client does not pay the whole project before seeing the work.
 - The team can see that the complete budget has already been prepared.
-- Payment moves directly to the team after the client approves a delivery.
-- If there is a serious disagreement, an independent wallet can divide the
-  unpaid balance between the two sides.
+- Payment moves directly to the team after approval or an objection-free review
+  window.
+- Revision requests are limited and reset the review clock after resubmission.
+- If there is a serious disagreement, an independent wallet decides only the
+  disputed milestone instead of freezing the complete project.
 
 ClearDeal is an independent product built on Arc. Arc is the settlement
 infrastructure and does not imply endorsement by Circle.
@@ -48,8 +51,9 @@ Client creates project and delivery steps
   -> client deposits the complete USDC budget
   -> Vietnamese team submits one completed delivery
   -> delivery note and sample files are tied to a wallet signature
-  -> client reviews the delivery
-  -> client approves and the contract pays that step
+  -> a 72-hour client review window begins
+  -> client approves, requests a bounded revision, or opens a milestone dispute
+  -> without an objection, anyone can finalize and the contract pays that step
   -> remaining USDC stays held for later steps
   -> project completes, refunds the remainder, or enters dispute resolution
 ```
@@ -66,14 +70,14 @@ are no longer the main ClearDeal story.
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Canonical USDC: `0x3600000000000000000000000000000000000000`
-- ClearDealEscrow: `0x3488b4612a5ea84d56a5b41ac53ab7616213444a`
-- Escrow deployment block: `52593658`
-- [Verified ClearDealEscrow on ArcScan](https://testnet.arcscan.app/address/0x3488b4612a5ea84d56a5b41ac53ab7616213444a#code)
+- ClearDealEscrowV2: `0x9F95E8Cf6D495F6B1898526D8Bb301b3523560fe`
+- Escrow deployment block: `54445308`
+- [Verified ClearDealEscrowV2 on ArcScan](https://testnet.arcscan.app/address/0x9F95E8Cf6D495F6B1898526D8Bb301b3523560fe#code)
 - [Completed end-to-end Arc Testnet proof](docs/TESTNET-PROOF.md)
 
 The contract supports project creation, complete-budget funding, delivery
-submission, step-by-step release, refunds after a deadline, and independent
-dispute resolution.
+submission, bounded revisions, timed release, safe expired refunds, and
+independent dispute resolution for each milestone.
 
 ## Crosschain testnet funding
 
@@ -108,8 +112,8 @@ device credential is lost.
 NEXT_PUBLIC_APP_URL=https://your-domain.example
 NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.network
 NEXT_PUBLIC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
-NEXT_PUBLIC_CLEARDEAL_ESCROW_ADDRESS=0x3488b4612a5ea84d56a5b41ac53ab7616213444a
-NEXT_PUBLIC_CLEARDEAL_DEPLOYMENT_BLOCK=52593658
+NEXT_PUBLIC_CLEARDEAL_ESCROW_ADDRESS=0x9F95E8Cf6D495F6B1898526D8Bb301b3523560fe
+NEXT_PUBLIC_CLEARDEAL_DEPLOYMENT_BLOCK=54445308
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_KEY=...
 NEXT_PUBLIC_CIRCLE_MODULAR_CLIENT_URL=...

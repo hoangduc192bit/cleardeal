@@ -22,7 +22,13 @@ export interface ClearDealEvidenceAttachmentPayload {
   dataBase64: string;
 }
 
-export type ClearDealEvidenceKind = "milestone_submission" | "dispute" | "resolution";
+export type ClearDealEvidenceKind =
+  | "milestone_submission"
+  | "change_request"
+  | "milestone_dispute"
+  | "milestone_resolution"
+  | "dispute"
+  | "resolution";
 
 export interface ClearDealEvidence {
   version: 1;
@@ -90,11 +96,27 @@ export function normalizeClearDealEvidence(value: unknown): ClearDealEvidence | 
   const dealId = normalizeUint(input.dealId);
   const milestoneId = input.milestoneId === undefined ? undefined : normalizeUint(input.milestoneId);
   const reference = typeof input.reference === "string" ? input.reference.trim() : "";
-  if (input.version !== 1 || !["milestone_submission", "dispute", "resolution"].includes(kind ?? "")) return null;
+  if (
+    input.version !== 1 ||
+    ![
+      "milestone_submission",
+      "change_request",
+      "milestone_dispute",
+      "milestone_resolution",
+      "dispute",
+      "resolution",
+    ].includes(kind ?? "")
+  ) return null;
   if (!dealId || !reference || reference.length > 1_000 || !Number.isSafeInteger(input.submittedAt)) return null;
   if (input.milestoneId !== undefined && milestoneId === null) return null;
-  if (kind === "milestone_submission" && milestoneId === undefined) return null;
-  if (kind !== "milestone_submission" && input.milestoneId !== undefined) return null;
+  const milestoneKind = [
+    "milestone_submission",
+    "change_request",
+    "milestone_dispute",
+    "milestone_resolution",
+  ].includes(kind ?? "");
+  if (milestoneKind && milestoneId === undefined) return null;
+  if (!milestoneKind && input.milestoneId !== undefined) return null;
   if (input.attachments !== undefined && !Array.isArray(input.attachments)) return null;
   const attachments = Array.isArray(input.attachments)
     ? input.attachments.map(normalizeAttachment)

@@ -3,7 +3,7 @@ import { Check, FileText, WalletCards } from "lucide-react";
 const steps = [
   { number: "01", icon: WalletCards, title: "Prepare the project money", text: "The client deposits the complete USDC budget once, so the team knows payment is ready." },
   { number: "02", icon: FileText, title: "Deliver one step", text: "The team uploads a delivery note and sample files for the client to review." },
-  { number: "03", icon: Check, title: "Approve and pay", text: "When the client approves that step, ClearDeal releases only its agreed USDC amount." },
+  { number: "03", icon: Check, title: "Review, then pay", text: "The client approves, requests a limited revision, or disputes. No objection before the timer ends unlocks payment." },
 ] as const;
 
 export function DealFlowSection() {

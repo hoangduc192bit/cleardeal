@@ -23,7 +23,7 @@ export function EscrowAnatomySection() {
             <ArrowRight className="mx-auto h-5 w-5 self-center text-slate-300 max-sm:rotate-90" />
             <FlowNode icon={FileCheck2} label="Vietnam team" title="Submits one finished delivery" foot="Files + note" accent />
             <ArrowRight className="mx-auto h-5 w-5 self-center text-slate-300 max-sm:rotate-90" />
-            <FlowNode icon={CheckCircle2} label="ClearDeal" title="Pays only after client approval" foot="Fast Arc receipt" />
+            <FlowNode icon={CheckCircle2} label="ClearDeal" title="Pays after approval or a clear review deadline" foot="Fast Arc receipt" />
           </div>
         </div>
       </div>

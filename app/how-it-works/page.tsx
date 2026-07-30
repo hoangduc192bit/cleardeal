@@ -7,8 +7,8 @@ const steps = [
   ["01", "Agree on the delivery steps", "The client and team define what will be delivered, how much each step pays, and when it is due."],
   ["02", "Prepare the complete budget", "The client deposits the project USDC once. The team can verify that payment is ready before starting."],
   ["03", "Submit one delivery", "The team adds a clear delivery note and optional sample files for the client to review."],
-  ["04", "Approve and release payment", "The client approves the finished step. ClearDeal immediately sends only that step’s agreed USDC amount."],
-  ["05", "Finish, refund, or resolve a problem", "The same project keeps its paid steps, unpaid balance, deadlines, and dispute helper together."],
+  ["04", "Approve and release payment", "The client can approve, request a limited revision, or dispute the step. If the review time ends without an objection, the team can release the agreed USDC."],
+  ["05", "Finish, refund, or resolve a problem", "A dispute pauses only that delivery. The independent helper can split only that step while the rest of the project stays intact."],
 ] as const;
 
 export default function HowItWorksPage() {
@@ -18,10 +18,10 @@ export default function HowItWorksPage() {
       <section className="mx-auto max-w-[1180px] px-5 pb-24 pt-32 sm:px-8">
         <header className="grid gap-8 border-b border-[#ded5c6] pb-12 lg:grid-cols-[1.15fr_.85fr] lg:items-end">
           <h1 className="max-w-4xl font-display text-5xl leading-[.98] tracking-[-0.055em] sm:text-6xl">
-            From prepared money to approved work.
+            From prepared money to protected delivery.
           </h1>
           <p className="max-w-lg text-[15px] leading-7 text-[#766b5d]">
-            ClearDeal gives the client control over approval and gives the team proof that the project budget is already prepared.
+            ClearDeal gives the client time to review and gives the team a clear payment deadline after work is submitted.
           </p>
         </header>
         <div className="mt-14 border-y border-[#ded5c6]">
@@ -34,8 +34,8 @@ export default function HowItWorksPage() {
           ))}
         </div>
         <section className="mt-16 grid gap-px overflow-hidden border border-[#ded5c6] bg-[#ded5c6] md:grid-cols-3">
-          <Principle title="Client protected" text="Work is reviewed before each payment is released." />
-          <Principle title="Team protected" text="The full project budget can be verified before work begins." />
+          <Principle title="Client protected" text="Approve, request a bounded revision, or pause a disputed delivery." />
+          <Principle title="Team protected" text="The full budget is ready and silence cannot block payment forever." />
           <Principle title="Simple on Arc" text="The project payment and network fee both use USDC." />
         </section>
         <section className="mt-16 flex flex-col justify-between gap-6 border border-amber-300 bg-amber-50 p-7 md:flex-row md:items-center">

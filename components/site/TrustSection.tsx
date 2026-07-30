@@ -1,7 +1,7 @@
 import { Check, LockKeyhole } from "lucide-react";
 
-const clientPoints = ["Money moves after approval", "Unpaid balance stays protected", "Every payment has a receipt"];
-const agencyPoints = ["Full budget is prepared", "Each approved step pays quickly", "Delivery proof stays attached"];
+const clientPoints = ["Time to review every delivery", "Limited revision requests", "Disputes pause only one step"];
+const agencyPoints = ["Full budget is prepared", "Silence cannot block payment forever", "Delivery proof stays attached"];
 
 export function TrustSection() {
   return (
