@@ -24,9 +24,10 @@ varying vec2 v_texCoord;
 uniform float u_time;
 void main() {
   vec2 uv = v_texCoord;
-  vec3 cream = vec3(1.0, 0.988, 0.941);
-  vec3 honey = vec3(1.0, 0.761, 0.239);
-  vec3 sand = vec3(0.976, 0.937, 0.886);
+  vec3 cloud = vec3(0.961, 0.969, 0.984);
+  vec3 honey = vec3(0.969, 0.718, 0.200);
+  vec3 mint = vec3(0.929, 0.976, 0.961);
+  vec3 ice = vec3(0.929, 0.949, 0.992);
   float wave = sin(uv.x * 10.0 + u_time * 0.5) * 0.1;
   float path = smoothstep(0.012, 0.0, abs(uv.x - 0.5 + wave + sin(u_time * 0.2) * 0.2));
   path += smoothstep(0.012, 0.0, abs(uv.x - 0.2 + wave * 0.5 + cos(u_time * 0.3) * 0.1));
@@ -34,10 +35,11 @@ void main() {
   float t = u_time * 0.1;
   vec2 shift = vec2(sin(t), cos(t)) * 0.2;
   float dist = length(uv - 0.5 + shift);
-  vec3 color = mix(cream, sand, smoothstep(0.2, 0.8, dist));
+  vec3 color = mix(cloud, mint, smoothstep(0.2, 0.8, dist));
+  color = mix(color, ice, smoothstep(0.45, 0.9, uv.x));
   color = mix(color, honey, path * 0.16);
   float glow = 1.0 - smoothstep(0.0, 0.7, length(uv - 0.5));
-  color += honey * glow * 0.055;
+  color += honey * glow * 0.045;
   gl_FragColor = vec4(color, 1.0);
 }`;
 

@@ -308,7 +308,7 @@ export function PasskeyRecoveryModal({
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
-                    {copied ? "Copied — store it safely now" : "Copy 12 words"}
+                    {copied ? "Copied. Store it safely now" : "Copy 12 words"}
                   </button>
                   <p className="mt-4 text-[11px] leading-5 text-slate-500">
                     Do not take a screenshot, email the phrase, or paste it into

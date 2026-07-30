@@ -1,21 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Albert_Sans, DM_Serif_Display } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
 import { Providers } from "@/app/providers";
+import { ClearDealDock } from "@/components/cleardeal/ClearDealDock";
 import clearDealLogo from "../logo.png";
 
-const albertSans = Albert_Sans({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-albert-sans",
-  weight: ["400", "500", "600", "700", "800", "900"],
-  display: "swap",
-});
-
-const dmSerif = DM_Serif_Display({
-  subsets: ["latin"],
-  variable: "--font-dm-serif",
-  weight: "400",
+  variable: "--font-plus-jakarta",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -61,9 +55,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${albertSans.variable} ${dmSerif.variable}`}>
+    <html lang="en" className={plusJakarta.variable}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <a className="cd-skip-link" href="#main-content">
+            Skip to main content
+          </a>
+          {children}
+          <ClearDealDock />
+        </Providers>
       </body>
     </html>
   );

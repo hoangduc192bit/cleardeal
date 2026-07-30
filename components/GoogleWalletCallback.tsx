@@ -25,7 +25,7 @@ export function GoogleWalletCallback() {
   if (!processing) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-3 bottom-4 z-20 flex justify-center">
+    <div className="pointer-events-none fixed inset-x-3 bottom-[6.8rem] z-[85] flex justify-center">
       <div className="flex w-full max-w-md items-center gap-3 rounded-2xl border border-blue-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,.2)]">
         <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-blue-600" />
         <div>

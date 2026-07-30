@@ -1083,26 +1083,29 @@ export function ProjectDashboardClient() {
   const projectRows = deals.length ? visibleDeals : [demoProject];
 
   return (
-    <main className="cleardeal-app min-h-[100dvh] bg-[#fffcf0] text-[#2b2118]">
-      <header className="sticky top-0 z-50 border-b border-[#ded5c6] bg-[#fffcf0]/95 backdrop-blur-xl">
+    <main
+      id="main-content"
+      className="cleardeal-app cd-page-shell cd-page-enter min-h-[100dvh] text-[#2b2118]"
+    >
+      <header className="cd-topbar sticky top-0 z-50">
         <div className="mx-auto flex h-[78px] max-w-[1580px] items-center justify-between px-4 sm:px-7">
           <ClearDealBrand />
           <nav className="hidden h-full items-center gap-8 lg:flex" aria-label="Project navigation">
-            <Link href="/dashboard" className="relative grid h-full place-items-center text-[13px] font-semibold">
+            <Link href="/dashboard" className="cd-nav-link relative grid h-full place-items-center">
               Projects
               <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#c88400]" />
             </Link>
-            <Link href="/how-it-works" className="text-[13px] text-[#766b5d] hover:text-[#2b2118]">
+            <Link href="/how-it-works" className="cd-nav-link">
               How it works
             </Link>
             <button
               type="button"
               onClick={() => setDirectoryOpen(true)}
-              className="text-[13px] text-[#766b5d] hover:text-[#2b2118]"
+              className="cd-nav-link"
             >
               Wallet contacts
             </button>
-            <Link href="/docs" className="text-[13px] text-[#766b5d] hover:text-[#2b2118]">
+            <Link href="/docs" className="cd-nav-link">
               Docs
             </Link>
           </nav>
@@ -1133,14 +1136,14 @@ export function ProjectDashboardClient() {
         ) : null}
       </header>
 
-      <div className="mx-auto grid max-w-[1580px] lg:grid-cols-[310px_minmax(0,1fr)_330px]">
-        <aside className="border-b border-[#ded5c6] lg:min-h-[calc(100dvh-78px)] lg:border-b-0 lg:border-r">
+      <div className="cd-dashboard-grid mx-auto grid max-w-[1580px] lg:grid-cols-[310px_minmax(0,1fr)_330px]">
+        <aside className="cd-dashboard-sidebar border-b border-[#ded5c6] lg:min-h-[calc(100dvh-78px)] lg:border-b-0 lg:border-r">
           <div className="p-5">
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
               disabled={busy}
-              className="inline-flex min-h-14 w-full items-center justify-center gap-3 bg-[#d58b00] px-5 text-[13px] font-semibold text-white hover:bg-[#bd7b00] disabled:cursor-not-allowed disabled:opacity-45"
+              className="cd-button-primary inline-flex min-h-14 w-full items-center justify-center gap-3 px-5 text-[13px] disabled:cursor-not-allowed disabled:opacity-45"
             >
               <Plus className="h-5 w-5" />
               New project
@@ -1274,7 +1277,7 @@ export function ProjectDashboardClient() {
           ) : null}
         </aside>
 
-        <section className="min-w-0 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
+        <section className="cd-dashboard-content min-w-0 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
           <div className="border-b border-[#ded5c6] pb-7">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div>
@@ -1324,7 +1327,7 @@ export function ProjectDashboardClient() {
           </div>
 
           <p className="py-7 font-display text-2xl leading-tight text-[#382d22]">
-            Each delivery is paid after approval—or automatically when its review time ends without a dispute.
+            Each delivery is paid after approval. It can also release automatically when its review time ends without a dispute.
           </p>
           {isDemo ? (
             <p className="mb-7 border-l-2 border-[#d58b00] pl-4 text-[11px] leading-6 text-[#766b5d]">
@@ -1663,7 +1666,7 @@ export function ProjectDashboardClient() {
           </div>
         </section>
 
-        <aside className="border-t border-[#ded5c6] lg:min-h-[calc(100dvh-78px)] lg:border-l lg:border-t-0">
+        <aside className="cd-dashboard-sidebar border-t border-[#ded5c6] lg:min-h-[calc(100dvh-78px)] lg:border-l lg:border-t-0">
           {isDemo ? (
             <div className="border-b border-[#ded5c6] bg-[#fff5d9] p-6">
               <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-[#8c5a00]">
@@ -1750,7 +1753,7 @@ export function ProjectDashboardClient() {
       </div>
 
       {transaction ? (
-        <div className={`fixed bottom-5 left-1/2 z-[90] flex w-[min(92vw,620px)] -translate-x-1/2 items-center gap-3 border px-4 py-3 shadow-xl ${
+        <div className={`fixed bottom-[6.8rem] left-1/2 z-[90] flex w-[min(92vw,620px)] -translate-x-1/2 items-center gap-3 rounded-2xl border px-4 py-3 shadow-xl ${
           transaction.status === "error" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-[#e1c27e] bg-[#fff5d9] text-[#5f4309]"
         }`}>
           {transaction.status === "pending" ? <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" /> : transaction.status === "confirmed" ? <Check className="h-4 w-4 shrink-0" /> : <X className="h-4 w-4 shrink-0" />}
@@ -1854,7 +1857,7 @@ export function ProjectDashboardClient() {
                 <EvidenceFileList label="Locked clean delivery" files={evidenceCleanFiles} />
               ) : null}
               <p className="border border-amber-200 bg-amber-50 p-3 text-[10px] leading-5 text-amber-900">
-                Maximum 3 files total, 1.5 MB each and 2.5 MB combined. ClearDeal stores encrypted files offchain; Arc stores only their signed fingerprint. This is access control, not DRM—a reviewer can still record their screen.
+                Maximum 3 files total, 1.5 MB each and 2.5 MB combined. ClearDeal stores encrypted files offchain; Arc stores only their signed fingerprint. This is access control, not DRM. A reviewer can still record their screen.
               </p>
             </div>
             <footer className="flex justify-end gap-3 border-t border-[#ded5c6] p-6">

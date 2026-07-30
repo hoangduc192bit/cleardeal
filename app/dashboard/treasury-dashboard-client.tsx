@@ -946,11 +946,11 @@ function ExpenseDetail({
         <div className="mt-5 grid gap-4 border-t border-[#e8e1d6] pt-5 text-[11px] sm:grid-cols-2 2xl:grid-cols-4">
           <Fact
             label="Department"
-            value={expense.metadata?.department ?? "—"}
+            value={expense.metadata?.department ?? "Not provided"}
           />
           <Fact
             label="Requested by"
-            value={expense.metadata?.requesterName ?? "—"}
+            value={expense.metadata?.requesterName ?? "Not provided"}
           />
           <Fact label="Created" value={formatDate(expense.createdAt)} />
           <Fact
@@ -1392,7 +1392,7 @@ function ArcPaymentRecord({ expense }: { expense?: ExpenseRecord }) {
           label="Memo"
           value={
             expense?.metadata?.memoCode ??
-            (expense ? `CD-EXP-${expense.id.toString()}` : "—")
+            (expense ? `CD-EXP-${expense.id.toString()}` : "Not available")
           }
         />
       </div>

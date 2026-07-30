@@ -56,7 +56,10 @@ export function AnimatedHeroHeadline({
             <motion.span
               key={phrase}
               className="will-change-transform [grid-area:1/1]"
-              initial={false}
+              initial={{
+                opacity: isActive ? 1 : 0,
+                y: isActive ? "0%" : offset,
+              }}
               animate={{
                 opacity: isActive ? 1 : 0,
                 y: isActive ? "0%" : offset,

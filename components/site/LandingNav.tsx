@@ -18,29 +18,41 @@ export function LandingNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-white/90 shadow-[0_1px_0_rgba(15,23,42,.02)] backdrop-blur-[20px]">
+    <header className="cd-topbar fixed inset-x-0 top-0 z-50">
       <div className="mx-auto flex h-[72px] max-w-[1240px] items-center justify-between px-5 sm:px-8">
         <ClearDealBrand />
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
           {links.map(([label, href]) => (
-            <Link key={label} href={href} className="rounded-lg px-2 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
+            <Link key={label} href={href} className="cd-nav-link">
               {label}
             </Link>
           ))}
         </nav>
-        <Link href="/dashboard" className="hidden min-h-10 items-center rounded-lg bg-blue-600 px-5 text-[12px] font-semibold !text-white transition-colors hover:bg-blue-500 md:inline-flex">
+        <Link href="/dashboard" className="cd-button-primary hidden min-h-11 md:inline-flex">
           Open projects
         </Link>
-        <button type="button" onClick={() => setOpen((value) => !value)} className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 md:hidden" aria-label={open ? "Close menu" : "Open menu"}>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm md:hidden"
+          aria-expanded={open}
+          aria-label={open ? "Close menu" : "Open menu"}
+        >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
       <AnimatePresence>
         {open ? (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-200 bg-white p-5 shadow-xl md:hidden">
+          <motion.div
+            initial={{ opacity: 0, y: -8, filter: "blur(3px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -5, filter: "blur(2px)" }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="border-t border-slate-200 bg-white/95 p-5 shadow-xl backdrop-blur-xl md:hidden"
+          >
             <nav className="grid gap-1">
-              {links.map(([label, href]) => <Link key={label} href={href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-950">{label}</Link>)}
-              <Link href="/dashboard" onClick={() => setOpen(false)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-5 text-sm font-semibold !text-white">Open projects</Link>
+              {links.map(([label, href]) => <Link key={label} href={href} onClick={() => setOpen(false)} className="cd-nav-link">{label}</Link>)}
+              <Link href="/dashboard" onClick={() => setOpen(false)} className="cd-button-primary mt-3">Open projects</Link>
             </nav>
           </motion.div>
         ) : null}

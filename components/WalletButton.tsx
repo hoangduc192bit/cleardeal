@@ -262,7 +262,7 @@ export function WalletButton() {
   return (
     <div className="relative">
       <button
-        className="flex h-11 cursor-pointer items-center gap-2 whitespace-nowrap rounded-xl bg-blue-600 px-4 text-[13px] font-semibold text-white shadow-sm shadow-blue-600/20 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="cd-button-primary flex h-11 cursor-pointer items-center gap-2 whitespace-nowrap px-4 text-[13px] disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isPending}
         onClick={() => open ? closeMenu() : openMenu()}
         type="button"
@@ -274,7 +274,7 @@ export function WalletButton() {
 
       {menuMounted && (
         <div data-origin="top-right" className={`t-dropdown absolute right-0 top-[calc(100%+10px)] z-50 w-[22rem] rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,.18)] ${open ? "is-open" : menuClosing ? "is-closing" : ""}`}>
-          <div className="passkey-panel rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-4 text-white">
+          <div className="passkey-panel cd-auth-panel rounded-2xl p-4 text-white">
             <div className="flex items-center gap-2 text-[15px] font-bold">
               <KeyRound className="h-4 w-4" />
               Sign in to ClearDeal

@@ -413,7 +413,7 @@ export function CrosschainFundingModal({
                 disabled={running}
                 className="min-h-12 border border-[#766b5d] px-5 text-[12px] font-semibold disabled:opacity-45"
               >
-                {result?.state === "success" ? "Done — deposit from Arc" : "Cancel"}
+                {result?.state === "success" ? "Done. Deposit from Arc" : "Cancel"}
               </button>
             </div>
           </div>

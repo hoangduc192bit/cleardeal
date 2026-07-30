@@ -10,10 +10,10 @@ import { TrustSection } from "@/components/site/TrustSection";
 
 export default function Home() {
   return (
-    <div className="cleardeal min-h-[100dvh] overflow-x-clip bg-[#fffcf0] text-slate-950">
+    <div className="cleardeal cd-page-shell min-h-[100dvh] overflow-x-clip text-slate-950">
       <LandingMotion />
       <LandingNav />
-      <main>
+      <main id="main-content" className="cd-page-enter">
         <Hero />
         <TrustSection />
         <DealFlowSection />

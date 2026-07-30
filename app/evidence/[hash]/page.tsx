@@ -38,7 +38,10 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
   const contractUrl = clearingHouseAddress ? `https://testnet.arcscan.app/address/${clearingHouseAddress}` : "https://testnet.arcscan.app";
 
   return (
-    <main className="cleardeal min-h-screen bg-[#fffcf0] text-slate-950">
+    <main
+      id="main-content"
+      className="cleardeal cd-page-shell cd-page-enter min-h-screen text-slate-950"
+    >
       <AppNav />
       <section className="mx-auto max-w-[980px] px-5 pb-24 pt-32 sm:px-8">
         <div className="flex flex-col gap-6 border-b border-slate-200 pb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -53,7 +56,7 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_280px]">
-          <article className="border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <article className="cd-depth-card p-6 sm:p-8">
             <div className="flex items-center gap-2 text-blue-600"><FileCheck2 className="h-4 w-4" /><p className="font-mono text-[9px] uppercase tracking-[0.14em]">Completion evidence</p></div>
             <div className="mt-5 whitespace-pre-wrap break-words text-[15px] leading-7 text-slate-700">
               {isPublicUrl(stored.evidence.reference)
@@ -79,7 +82,7 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
                     const attachmentUrl = `/api/clearing/evidence/attachment?hash=${hash}&index=${index}`;
                     const isImage = attachment.contentType === "image/jpeg" || attachment.contentType === "image/png";
                     return (
-                      <article key={attachment.sha256} className="overflow-hidden border border-slate-200 bg-slate-50">
+                      <article key={attachment.sha256} className="cd-soft-panel overflow-hidden">
                         {isImage ? (
                           <a href={`${attachmentUrl}&view=1`} target="_blank" rel="noreferrer" className="block bg-slate-100">
                             <Image
@@ -119,7 +122,7 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
             )}
           </article>
 
-          <aside className="h-fit border border-slate-200 bg-[#fffaf0] p-5">
+          <aside className="cd-gradient-panel h-fit p-5">
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500">Evidence receipt</p>
             <dl className="mt-5 space-y-5">
               <Receipt label="Provider" value={shortWallet(stored.providerAddress)} mono />
@@ -128,8 +131,8 @@ export default async function EvidencePage({ params }: { params: Promise<{ hash:
               <Receipt label="Evidence hash" value={hash} mono />
             </dl>
             <div className="mt-6 grid gap-2">
-              <Link href={`/dashboard?cycle=${stored.evidence.cycleId}`} className="bg-blue-600 px-4 py-3 text-center text-[11px] font-semibold text-white">Open settlement room</Link>
-              <a href={contractUrl} target="_blank" rel="noreferrer" className="border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-semibold text-slate-700">Verify contract on ArcScan</a>
+              <Link href={`/dashboard?cycle=${stored.evidence.cycleId}`} className="cd-button-primary px-4 py-3 text-center text-[11px]">Open settlement room</Link>
+              <a href={contractUrl} target="_blank" rel="noreferrer" className="cd-button-secondary px-4 py-3 text-center text-[11px]">Verify contract on ArcScan</a>
             </div>
           </aside>
         </div>

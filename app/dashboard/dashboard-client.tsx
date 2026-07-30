@@ -607,8 +607,11 @@ export function DashboardClient() {
   };
 
   return (
-    <main className="cleardeal-app min-h-[100dvh] bg-[#fffcf0] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+    <main
+      id="main-content"
+      className="cleardeal-app cd-page-shell cd-page-enter min-h-[100dvh] text-slate-950"
+    >
+      <header className="cd-topbar sticky top-0 z-50">
         <div className="mx-auto flex h-[72px] max-w-[1500px] items-center justify-between px-5 sm:px-8">
           <ClearDealBrand />
           <div className="hidden items-center gap-3 md:flex">
@@ -662,14 +665,14 @@ export function DashboardClient() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/dashboard?cycle=0"
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 shadow-sm hover:border-blue-300 hover:text-blue-700"
+              className="cd-button-secondary inline-flex min-h-11 items-center gap-2 px-4 text-[12px]"
             >
               <ListChecks className="h-4 w-4" /> View live example
             </Link>
             <button
               type="button"
               onClick={() => setAdvancedMode((value) => !value)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-semibold text-slate-700 shadow-sm hover:border-blue-300 hover:text-blue-700"
+              className="cd-button-secondary inline-flex min-h-11 items-center gap-2 px-4 text-[12px]"
             >
               <Settings2 className="h-4 w-4" />{" "}
               {advancedMode ? "Simple mode" : "Advanced details"}
@@ -678,7 +681,7 @@ export function DashboardClient() {
               type="button"
               disabled={busy}
               onClick={() => setCreateOpen(true)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-[12px] font-semibold text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-40"
+              className="cd-button-primary inline-flex min-h-11 items-center gap-2 px-5 text-[12px] disabled:opacity-40"
             >
               <Plus className="h-4 w-4" /> New settlement room
             </button>
@@ -688,7 +691,7 @@ export function DashboardClient() {
 
       {!clearingHouseConfigured ? (
         <Notice tone="error">
-          ClearingHouse is not configured — writes are disabled until the
+          ClearingHouse is not configured. Writes are disabled until the
           verified Arc Testnet deployment is added.
         </Notice>
       ) : wrongNetwork ? (
@@ -940,7 +943,7 @@ export function DashboardClient() {
               <div className="mt-5 flex items-end justify-between">
                 <div>
                   <strong className="text-4xl font-semibold">
-                    {reliability === undefined ? "—" : reliability}
+                    {reliability === undefined ? "Not available" : reliability}
                   </strong>
                   <span className="ml-1 text-sm text-white/30">/100</span>
                 </div>
@@ -999,7 +1002,7 @@ export function DashboardClient() {
             </p>
             <strong className="mt-3 block text-xl">
               {walletBalance === undefined
-                ? "—"
+                ? "Not available"
                 : formatClearingUsdc(walletBalance)}
             </strong>
             <p className="mt-2 text-[11px] leading-5 text-white/36">
