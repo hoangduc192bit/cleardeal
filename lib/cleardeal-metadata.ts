@@ -14,6 +14,7 @@ export interface ClearDealMetadata {
 export interface StoreDealMetadataAuthorization {
   ownerAddress: Address;
   metadataHash: Hex;
+  notificationHash?: Hex;
   requestId: string;
   issuedAt: number;
 }
@@ -70,6 +71,7 @@ export function buildStoreDealMetadataMessage(input: StoreDealMetadataAuthorizat
     "Network: Arc Testnet (5042002)",
     `Owner: ${input.ownerAddress.toLowerCase()}`,
     `Metadata hash: ${input.metadataHash.toLowerCase()}`,
+    `Private notification contacts hash: ${input.notificationHash?.toLowerCase() ?? `0x${"0".repeat(64)}`}`,
     `Request ID: ${input.requestId}`,
     `Issued at: ${input.issuedAt}`,
     "",

@@ -8,6 +8,9 @@ import {
   clearDealUsdcAddress,
 } from "@/lib/cleardeal-contract";
 import { isDurableKvConfigured } from "@/lib/kv-rest";
+import { isProtectedFileStoreConfigured } from "@/lib/cleardeal-protected-files";
+import { isClearDealAutomationWalletConfigured } from "@/lib/cleardeal-automation";
+import { isClearDealEmailConfigured } from "@/lib/cleardeal-email";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +51,8 @@ export async function GET() {
     escrowBytecode: escrowCodePresent,
     escrowUsdc: escrowUsdcMatches,
     metadataStore: isDurableKvConfigured,
+    protectedFiles: isProtectedFileStoreConfigured,
+    automationWallet: isClearDealAutomationWalletConfigured,
   };
   const ready = Object.values(checks).every(Boolean);
 
@@ -65,6 +70,12 @@ export async function GET() {
       contract: checks.escrowBytecode && checks.escrowUsdc
         ? "ClearDealEscrow bytecode and canonical USDC verified"
         : "verify the ClearDealEscrow deployment before public testing",
+      automation: checks.automationWallet
+        ? "Circle developer-controlled wallet is ready to finalize expired reviews"
+        : "configure the Circle automation wallet before promising automatic release",
+      email: isClearDealEmailConfigured
+        ? "email notifications enabled"
+        : "email notifications are optional and not configured",
     },
   }, { status: ready ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }

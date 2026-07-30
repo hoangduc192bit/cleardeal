@@ -39,7 +39,9 @@ infrastructure and does not imply endorsement by Circle.
   not need a second volatile token just to approve or receive payment.
 - Each delivery approval becomes a fast, public payment receipt.
 - The same stable unit is used for the budget, held balance, and final payout.
-- Wallets retain signing authority; the ClearDeal server cannot move funds.
+- Wallets retain project authority. A server automation wallet may call only the
+  permissionless expiry function; the contract itself prevents early release
+  and fixes the recipient and amount.
 - Circle App Kit can bridge testnet USDC from Base Sepolia or Ethereum Sepolia
   into the client's Arc Testnet wallet before project funding.
 
@@ -50,10 +52,11 @@ Client creates project and delivery steps
   -> client uses Arc USDC or bridges testnet USDC into Arc
   -> client deposits the complete USDC budget
   -> Vietnamese team submits one completed delivery
-  -> delivery note and sample files are tied to a wallet signature
+  -> delivery note, review preview, and locked clean file are tied to a wallet signature
   -> a 72-hour client review window begins
   -> client approves, requests a bounded revision, or opens a milestone dispute
-  -> without an objection, anyone can finalize and the contract pays that step
+  -> without an objection, the reconciliation bot or any wallet can finalize
+     and the contract pays that exact step
   -> remaining USDC stays held for later steps
   -> project completes, refunds the remainder, or enters dispute resolution
 ```
@@ -121,26 +124,33 @@ NEXT_PUBLIC_CIRCLE_APP_ID=...
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=...
 KV_REST_API_URL=https://...
 KV_REST_API_TOKEN=...
+CLEARDEAL_FILE_SECRET=at-least-32-random-characters
 ```
 
 The Circle values enable the optional passkey sign-in path. If they are not
 configured, browser-wallet and WalletConnect paths remain available. The KV
-store holds wallet-signed project descriptions and sample delivery files; only
-their hashes are tied to the contract.
+store holds wallet-signed project descriptions and encrypted delivery files;
+only their hashes are tied to the contract. Review images receive a viewer
+watermark, while clean files require participant authorization and a paid
+milestone before download.
 
 The Google values enable Circle User-Controlled Wallet onboarding. A new Google
 account creates an SCA on Arc Testnet; signing in again opens the same Circle
 wallet. The Circle API key remains server-side, and the short-lived wallet
-session is stored in an encrypted, httpOnly cookie. This release creates and
-displays the Google wallet; project contract approvals continue through the
-passkey, browser-wallet, or WalletConnect signing paths.
+session is stored in an encrypted, httpOnly cookie. The same Google wallet can
+sign project notes and contract actions after returning to the dashboard.
 
 Server-only deployment values:
 
 ```bash
 ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
 CIRCLE_API_KEY=...
-DEPLOYER_PRIVATE_KEY=0x...
+ENTITY_SECRET=...
+CIRCLE_WALLET_ID=...
+CLEARDEAL_AUTOMATION_TRIGGER_SECRET=...
+RESEND_API_KEY=...
+CLEARDEAL_EMAIL_FROM=ClearDeal <notifications@example.com>
+DEPLOYER_PRIVATE_KEY=0x... # local deploy/e2e only
 USDC_ADDRESS=0x3600000000000000000000000000000000000000
 ```
 
@@ -196,8 +206,9 @@ npm run deploy:cleardeal:testnet
 
 - Arc Testnet USDC has no real-world value.
 - Project amounts, wallet addresses, hashes, and payment results are public.
-- Upload only sample files without personal, salary, or confidential client
-  information.
+- Delivery files are encrypted offchain and access-controlled, but this MVP is
+  not a DRM system or audited confidential data room. Do not upload personal,
+  salary, regulated, or irreplaceable production secrets.
 - The product is not audited for mainnet use.
 - Arc Privacy is roadmap only and is not represented as a live feature.
 - Real VND bank withdrawal is not included; any VND or VietQR screen remains a

@@ -15,6 +15,15 @@ import {
   releaseMetadataAuthorization,
   storeDealMetadata,
 } from "@/lib/cleardeal-metadata-store";
+import {
+  hashNotificationContacts,
+  normalizeNotificationContacts,
+} from "@/lib/cleardeal-notification-contacts";
+import {
+  deleteNotificationContacts,
+  storeNotificationContacts,
+} from "@/lib/cleardeal-notifications";
+import { isProtectedFileStoreConfigured } from "@/lib/cleardeal-protected-files";
 import { rateLimit } from "@/lib/rate-limit";
 import { isSupportedWalletSignature, verifyWalletMessage } from "@/lib/wallet-signature";
 
@@ -47,6 +56,8 @@ export async function POST(request: Request) {
     ownerAddress?: string;
     metadataHash?: string;
     metadata?: unknown;
+    notificationContacts?: unknown;
+    notificationHash?: string;
     requestId?: string;
     issuedAt?: number;
     signature?: string;
@@ -58,12 +69,18 @@ export async function POST(request: Request) {
   }
 
   const metadata = normalizeDealMetadata(body.metadata);
+  const notificationContacts = normalizeNotificationContacts(
+    body.notificationContacts,
+  );
   if (
     !body.ownerAddress ||
     !isAddress(body.ownerAddress) ||
     !body.metadataHash ||
     !HASH_PATTERN.test(body.metadataHash) ||
     !metadata ||
+    !notificationContacts ||
+    !body.notificationHash ||
+    !HASH_PATTERN.test(body.notificationHash) ||
     !body.requestId ||
     !REQUEST_ID_PATTERN.test(body.requestId) ||
     !body.issuedAt ||
@@ -74,12 +91,32 @@ export async function POST(request: Request) {
   }
 
   const metadataHash = body.metadataHash as Hex;
+  const notificationHash = body.notificationHash as Hex;
   if (hashDealMetadata(metadata).toLowerCase() !== metadataHash.toLowerCase()) {
     return NextResponse.json({ error: "metadata_hash_mismatch" }, { status: 400 });
+  }
+  if (
+    hashNotificationContacts(notificationContacts).toLowerCase() !==
+    notificationHash.toLowerCase()
+  ) {
+    return NextResponse.json(
+      { error: "notification_contacts_hash_mismatch" },
+      { status: 400 },
+    );
+  }
+  if (
+    (notificationContacts.clientEmail || notificationContacts.teamEmail) &&
+    !isProtectedFileStoreConfigured
+  ) {
+    return NextResponse.json(
+      { error: "private_notification_store_not_configured" },
+      { status: 503 },
+    );
   }
   const authorization: StoreDealMetadataAuthorization = {
     ownerAddress: body.ownerAddress as Address,
     metadataHash,
+    notificationHash,
     requestId: body.requestId,
     issuedAt: body.issuedAt,
   };
@@ -94,9 +131,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    await storeNotificationContacts(metadataHash, notificationContacts);
     await storeDealMetadata(metadataHash, metadata);
     return NextResponse.json({ stored: true, metadataHash });
   } catch {
+    await deleteNotificationContacts(metadataHash).catch(() => undefined);
     await releaseMetadataAuthorization(authorization.requestId).catch(() => undefined);
     return NextResponse.json({ error: "metadata_store_failed" }, { status: 502 });
   }

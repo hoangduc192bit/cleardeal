@@ -54,4 +54,34 @@ describe("ClearDeal evidence", function () {
     expect(isFreshClearDealEvidenceAuthorization(1_000_000, 1_000_000)).to.equal(true);
     expect(isFreshClearDealEvidenceAuthorization(1_000_000, 1_000_000 + 5 * 60 * 1_000 + 1)).to.equal(false);
   });
+
+  it("binds review and paid file protection to the signed evidence hash", function () {
+    const protectedEvidence: ClearDealEvidence = {
+      ...evidence,
+      attachments: [
+        {
+          name: "preview.png",
+          contentType: "image/png",
+          size: 120,
+          sha256: `0x${"1".repeat(64)}`,
+          access: "review",
+          protection: "server_watermark",
+        },
+        {
+          name: "master.png",
+          contentType: "image/png",
+          size: 240,
+          sha256: `0x${"2".repeat(64)}`,
+          access: "paid",
+          protection: "locked_original",
+        },
+      ],
+    };
+    expect(normalizeClearDealEvidence(protectedEvidence)).to.deep.equal(protectedEvidence);
+    expect(hashClearDealEvidence(protectedEvidence)).not.to.equal(hashClearDealEvidence(evidence));
+    expect(normalizeClearDealEvidence({
+      ...protectedEvidence,
+      attachments: [{ ...protectedEvidence.attachments?.[1], protection: "server_watermark" }],
+    })).to.equal(null);
+  });
 });

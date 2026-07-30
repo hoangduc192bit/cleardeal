@@ -49,7 +49,10 @@ function activityCopy(event: ContractEvent, evidence?: StoredClearDealEvidence) 
   if (event.eventName === "DealCreated") return { title: "Deal created", detail: `${formatUsdc(args.totalAmount as bigint)} agreement opened by ${shortAddress(args.buyer as `0x${string}`)}.` };
   if (event.eventName === "DealFunded") return { title: "Escrow funded", detail: `${formatUsdc(args.amount as bigint)} locked in ClearDealEscrow.` };
   if (event.eventName === "MilestoneSubmitted") return { title: `Milestone #${Number(args.milestoneId) + 1} submitted`, detail: reference ?? "Wallet-signed delivery evidence recorded. The review window is now running." };
-  if (event.eventName === "ChangesRequested") return { title: `Changes requested for milestone #${Number(args.milestoneId) + 1}`, detail: `Revision ${Number(args.revisionCount)} was requested before payment.` };
+  if (event.eventName === "ChangesRequested") return {
+    title: `Changes requested for milestone #${Number(args.milestoneId) + 1}`,
+    detail: reference ?? `Revision ${Number(args.revisionCount)} was requested before payment.`,
+  };
   if (event.eventName === "MilestoneReleased") return {
     title: `${args.automatic ? "Automatically released" : "Approved"} milestone #${Number(args.milestoneId) + 1}`,
     detail: `${formatUsdc(args.amount as bigint)} paid to ${shortAddress(args.recipient as `0x${string}`)}.`,

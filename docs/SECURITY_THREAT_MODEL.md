@@ -2,15 +2,19 @@
 
 ## Product boundary
 
-ClearDeal coordinates verification-gated USDC obligations on Arc Testnet. The
-`ClearDealClearingHouse` contract escrows provider bonds, calculates net
-positions for passed obligations, collects exact net debits, and distributes
-USDC after settlement or default.
+ClearDeal's primary product is milestone escrow on Arc Testnet. The verified
+`ClearDealEscrowV2` contract holds a complete USDC project budget and releases
+one milestone after client approval, an objection-free review deadline, or an
+independent dispute decision. The earlier `ClearDealClearingHouse` remains a
+separate research proof in this repository.
 
 Human-readable metadata and evidence attachments are stored offchain. Their
 canonical hashes are wallet-signed and anchored to the onchain cycle or
 obligation. The contract proves integrity and settlement state; it does not
-prove that an offchain statement is factually true.
+prove that an offchain statement is factually true. New delivery attachments
+are encrypted at rest. A short-lived wallet-signed access token is required to
+open a review preview, and clean files remain locked until the milestone state
+is `Released` or `Resolved`.
 
 ## Assets to protect
 
@@ -19,6 +23,8 @@ prove that an offchain statement is factually true.
 - Cycle, obligation, evidence, vote, and settlement integrity.
 - Wallet-signed metadata and evidence authorization records.
 - Availability and privacy expectations for public Testnet evidence.
+- Encryption keys, participant-only file access tokens, and private email
+  notification contacts.
 
 ## Roles and trust
 
@@ -30,6 +36,7 @@ prove that an offchain statement is factually true.
 | Arbitrator          | Resolve any submitted obligation while the cycle is active                                      | This is a deliberately trusted role and can override an unfinished verifier process                 |
 | Public caller       | Close a finalizable cycle, settle a fully funded cycle, or default an expired underfunded cycle | These transitions are permissionless because their outcomes are deterministic                       |
 | Metadata store      | Preserve signed public records and attachments                                                  | Store compromise can affect availability, but hash/signature checks must expose tampering           |
+| Automation wallet   | Call `finalizeMilestone` after an elapsed review deadline                                       | It cannot choose the recipient/amount or bypass contract time/state checks                           |
 
 ## Security invariants
 
@@ -48,6 +55,10 @@ prove that an offchain statement is factually true.
 9. A verifier can cast at most one vote per obligation.
 10. No server, creator, or contract administrator can move a wallet's USDC
     without that wallet's ERC-20 approval and transaction signature.
+11. A clean milestone attachment is not served until the onchain milestone is
+    paid or resolved.
+12. The automation worker can call only a deterministic, permissionless
+    transition and cannot release a submitted milestone before its deadline.
 
 ## Primary attack paths
 
@@ -66,10 +77,13 @@ cannot re-enter an earlier state.
 
 ### Malicious or unavailable evidence
 
-Evidence truth is decided by verifiers/arbitrator, not by the hash itself.
-Attachment bytes are public Testnet data stored offchain. The application
-recomputes SHA-256 and rejects bytes that do not match the wallet-signed
-descriptor. Availability still depends on the configured durable store.
+Evidence truth is decided by the client or dispute helper, not by the hash
+itself. Attachment bytes are encrypted offchain. The application recomputes
+SHA-256 and rejects bytes that do not match the wallet-signed descriptor.
+Review image responses receive a viewer watermark; video previews must be
+uploaded as a separate low-resolution watermarked file. This is access control,
+not DRM, and cannot prevent screen recording. Availability still depends on the
+configured durable store.
 
 ### RPC or metadata API abuse
 
@@ -101,7 +115,7 @@ and durable rate-limit storage in production.
 
 - Mainnet funds or production legal enforceability.
 - Verification of real-world claims without trusted reviewers.
-- Confidential evidence storage.
+- Regulated or high-assurance confidential data-room use.
 - Compromised user wallets, malicious browser extensions, or phishing.
 - Arc consensus, canonical USDC, Vercel, Upstash/KV, and wallet-provider
   vulnerabilities.

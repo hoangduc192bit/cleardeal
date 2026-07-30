@@ -13,7 +13,16 @@ import {
   type ClearDealEvidenceAttachmentPayload,
   type StoreClearDealEvidenceAuthorization,
 } from "@/lib/cleardeal-evidence";
-import { getStoredDealEvidence, isDurableKvConfigured, storeDealEvidence } from "@/lib/cleardeal-evidence-store";
+import {
+  getDealEvidenceViewedAt,
+  getStoredDealEvidence,
+  isDurableKvConfigured,
+  storeDealEvidence,
+} from "@/lib/cleardeal-evidence-store";
+import {
+  encryptEvidenceAttachment,
+  isProtectedFileStoreConfigured,
+} from "@/lib/cleardeal-protected-files";
 import { consumeMetadataAuthorization, releaseMetadataAuthorization } from "@/lib/cleardeal-metadata-store";
 import { rateLimit } from "@/lib/rate-limit";
 import { isSupportedWalletSignature, verifyWalletMessage } from "@/lib/wallet-signature";
@@ -22,7 +31,7 @@ const HASH_PATTERN = /^0x[a-fA-F0-9]{64}$/;
 const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
 const BASE64_PATTERN =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const MAX_REQUEST_BYTES = 3_000_000;
+const MAX_REQUEST_BYTES = 3_800_000;
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +83,16 @@ export async function GET(request: Request) {
   }
   const evidence = await getStoredDealEvidence(evidenceHash as Hex);
   if (!evidence) return NextResponse.json({ error: "evidence_not_found" }, { status: 404 });
-  return NextResponse.json({ evidence }, { headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=300" } });
+  const clientViewedAt = await getDealEvidenceViewedAt(evidenceHash as Hex);
+  return NextResponse.json(
+    {
+      evidence: {
+        ...evidence,
+        ...(clientViewedAt ? { clientViewedAt } : {}),
+      },
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 export async function POST(request: Request) {
@@ -110,6 +128,15 @@ export async function POST(request: Request) {
   const attachmentPayloads = evidence
     ? normalizeAttachmentPayloads(evidence, body.attachmentPayloads)
     : null;
+  if (
+    attachmentPayloads?.length &&
+    !isProtectedFileStoreConfigured
+  ) {
+    return NextResponse.json(
+      { error: "protected_file_store_not_configured" },
+      { status: 503 },
+    );
+  }
   if (
     !body.signerAddress ||
     !isAddress(body.signerAddress) ||
@@ -162,7 +189,13 @@ export async function POST(request: Request) {
       signerAddress: authorization.signerAddress,
       signature: body.signature as Hex,
       storedAt: Date.now(),
-      ...(attachmentPayloads.length ? { attachmentPayloads } : {}),
+      ...(attachmentPayloads.length
+        ? {
+            attachmentPayloads: attachmentPayloads.map(
+              encryptEvidenceAttachment,
+            ),
+          }
+        : {}),
     });
     if (!stored) return NextResponse.json({ error: "evidence_already_exists" }, { status: 409 });
     return NextResponse.json({ stored: true, evidenceHash });

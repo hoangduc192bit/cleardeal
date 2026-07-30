@@ -4,6 +4,7 @@ import type { StoredClearDealEvidence } from "@/lib/cleardeal-evidence";
 import { isDurableKvConfigured, redisCommand } from "@/lib/kv-rest";
 
 const EVIDENCE_PREFIX = "cleardeal:evidence:";
+const VIEWED_PREFIX = "cleardeal:evidence-viewed:";
 
 export { isDurableKvConfigured };
 
@@ -25,4 +26,24 @@ export async function storeDealEvidence(evidenceHash: Hex, evidence: StoredClear
     "NX",
   ]);
   return result === "OK";
+}
+
+export async function markDealEvidenceViewed(evidenceHash: Hex, viewedAt = Date.now()) {
+  const result = await redisCommand<string | null>([
+    "SET",
+    `${VIEWED_PREFIX}${evidenceHash.toLowerCase()}`,
+    String(viewedAt),
+    "NX",
+  ]);
+  return result === "OK";
+}
+
+export async function getDealEvidenceViewedAt(evidenceHash: Hex) {
+  const value = await redisCommand<string>([
+    "GET",
+    `${VIEWED_PREFIX}${evidenceHash.toLowerCase()}`,
+  ]);
+  if (!value || !/^\d+$/.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
 }

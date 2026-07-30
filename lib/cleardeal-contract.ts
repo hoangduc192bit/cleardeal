@@ -53,6 +53,7 @@ export const clearDealEscrowAbi = [
   { type: "function", name: "approveRefund", stateMutability: "nonpayable", inputs: [{ name: "dealId", type: "uint256" }], outputs: [] },
   { type: "function", name: "claimExpiredRefund", stateMutability: "nonpayable", inputs: [{ name: "dealId", type: "uint256" }], outputs: [] },
   { type: "function", name: "participantDealCount", stateMutability: "view", inputs: [{ name: "participant", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "nextDealId", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "getDealIds", stateMutability: "view", inputs: [{ name: "participant", type: "address" }, { name: "offset", type: "uint256" }, { name: "limit", type: "uint256" }], outputs: [{ name: "result", type: "uint256[]" }] },
   {
     type: "function",

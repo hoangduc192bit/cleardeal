@@ -1,0 +1,30 @@
+name: ClearDeal review automation
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: cleardeal-review-automation
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Finalize expired reviews and send notifications
+        env:
+          CLEARDEAL_AUTOMATION_TRIGGER_SECRET: ${{ secrets.CLEARDEAL_AUTOMATION_TRIGGER_SECRET }}
+        run: |
+          test -n "$CLEARDEAL_AUTOMATION_TRIGGER_SECRET"
+          curl \
+            --fail \
+            --show-error \
+            --silent \
+            --retry 2 \
+            --retry-all-errors \
+            --max-time 55 \
+            -H "Authorization: Bearer $CLEARDEAL_AUTOMATION_TRIGGER_SECRET" \
+            "https://cleardeal-app.vercel.app/api/automation/cleardeal"

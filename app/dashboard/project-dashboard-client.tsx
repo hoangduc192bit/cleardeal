@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -11,9 +12,10 @@ import {
   ExternalLink,
   FileText,
   FolderKanban,
+  Eye,
   LoaderCircle,
+  LockKeyhole,
   Menu,
-  Paperclip,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -31,6 +33,7 @@ import {
   type Abi,
   type Address,
   type Hash,
+  type Hex,
 } from "viem";
 import {
   useAccount,
@@ -74,6 +77,7 @@ import {
 } from "@/lib/cleardeal-data";
 import {
   buildStoreClearDealEvidenceMessage,
+  buildAccessClearDealEvidenceMessage,
   CLEARDEAL_EVIDENCE_ALLOWED_ATTACHMENT_TYPES,
   CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS,
   CLEARDEAL_EVIDENCE_MAX_ATTACHMENT_BYTES,
@@ -83,6 +87,7 @@ import {
   type ClearDealEvidenceAttachment,
   type ClearDealEvidenceAttachmentPayload,
   type StoreClearDealEvidenceAuthorization,
+  type AccessClearDealEvidenceAuthorization,
 } from "@/lib/cleardeal-evidence";
 import {
   buildStoreDealMetadataMessage,
@@ -90,6 +95,10 @@ import {
   type ClearDealMetadata,
   type StoreDealMetadataAuthorization,
 } from "@/lib/cleardeal-metadata";
+import {
+  hashNotificationContacts,
+  type ClearDealNotificationContacts,
+} from "@/lib/cleardeal-notification-contacts";
 
 const EXPLORER = "https://testnet.arcscan.app";
 const DEMO_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
@@ -190,13 +199,16 @@ function bytesToBase64(bytes: Uint8Array) {
   return window.btoa(binary);
 }
 
-async function prepareEvidenceAttachments(files: readonly File[]) {
+async function prepareEvidenceAttachments(
+  files: readonly File[],
+  access: "review" | "paid",
+) {
   if (files.length > CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS) {
     throw new Error(`Attach no more than ${CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS} files.`);
   }
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   if (totalSize > CLEARDEAL_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES) {
-    throw new Error("Attachments must total less than 2 MB.");
+    throw new Error("Attachments must total less than 2.5 MB.");
   }
   const descriptors: ClearDealEvidenceAttachment[] = [];
   const payloads: ClearDealEvidenceAttachmentPayload[] = [];
@@ -206,10 +218,10 @@ async function prepareEvidenceAttachments(files: readonly File[]) {
         file.type as ClearDealEvidenceAttachment["contentType"],
       )
     ) {
-      throw new Error(`${file.name} is not a supported PDF, PNG, JPEG, or text file.`);
+      throw new Error(`${file.name} is not a supported PDF, PNG, JPEG, MP4, WebM, or text file.`);
     }
     if (file.size < 1 || file.size > CLEARDEAL_EVIDENCE_MAX_ATTACHMENT_BYTES) {
-      throw new Error(`${file.name} must be smaller than 1 MB.`);
+      throw new Error(`${file.name} must be smaller than 1.5 MB.`);
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
@@ -221,6 +233,15 @@ async function prepareEvidenceAttachments(files: readonly File[]) {
       contentType: file.type as ClearDealEvidenceAttachment["contentType"],
       size: file.size,
       sha256,
+      access,
+      protection:
+        access === "paid"
+          ? "locked_original"
+          : file.type === "image/png" || file.type === "image/jpeg"
+            ? "server_watermark"
+            : file.type === "video/mp4" || file.type === "video/webm"
+              ? "provided_preview"
+              : "participant_only",
     });
     payloads.push({ sha256, dataBase64: bytesToBase64(bytes) });
   }
@@ -256,7 +277,13 @@ export function ProjectDashboardClient() {
     milestone: ClearDealMilestone;
   }>();
   const [evidenceReference, setEvidenceReference] = useState("");
-  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
+  const [evidenceReviewFiles, setEvidenceReviewFiles] = useState<File[]>([]);
+  const [evidenceCleanFiles, setEvidenceCleanFiles] = useState<File[]>([]);
+  const [fileAccess, setFileAccess] = useState<{
+    evidenceHash: Hex;
+    access: "review" | "paid";
+    expiresAt: number;
+  }>();
   const [decisionTarget, setDecisionTarget] = useState<DecisionTarget>();
   const [decisionNote, setDecisionNote] = useState("");
   const [resolutionAward, setResolutionAward] = useState("");
@@ -295,9 +322,50 @@ export function ProjectDashboardClient() {
     ? activity.find(
         (item) =>
           item.evidence?.evidence.kind === "milestone_submission" &&
+          item.evidence.evidence.milestoneId === activeMilestone.id.toString() &&
+          item.evidenceHash?.toLowerCase() ===
+            activeMilestone.deliverableHash.toLowerCase(),
+      )?.evidence
+    : undefined;
+  const latestChangeRequest = activeMilestone
+    ? activity.find(
+        (item) =>
+          item.evidence?.evidence.kind === "change_request" &&
           item.evidence.evidence.milestoneId === activeMilestone.id.toString(),
       )?.evidence
     : undefined;
+  const activeAttachments = isDemo
+    ? [
+        {
+          name: "website-preview.png",
+          size: 742_000,
+          contentType: "image/png" as const,
+          access: "review" as const,
+          protection: "server_watermark" as const,
+          sha256: `0x${"c".repeat(64)}` as Hex,
+        },
+        {
+          name: "clean-delivery.pdf",
+          size: 1_120_000,
+          contentType: "application/pdf" as const,
+          access: "paid" as const,
+          protection: "locked_original" as const,
+          sha256: `0x${"d".repeat(64)}` as Hex,
+        },
+      ]
+    : activeEvidence?.evidence.attachments ?? [];
+  const activeFileAccess =
+    fileAccess &&
+    activeMilestone &&
+    fileAccess.evidenceHash.toLowerCase() ===
+      activeMilestone.deliverableHash.toLowerCase() &&
+    fileAccess.expiresAt > now * 1_000
+      ? fileAccess
+      : undefined;
+
+  useEffect(() => {
+    setFileAccess(undefined);
+  }, [activeMilestone?.deliverableHash]);
   const paid = selected.releasedAmount;
   const held = escrowBalance(selected);
   const wrongNetwork =
@@ -417,9 +485,15 @@ export function ProjectDashboardClient() {
         milestones: input.milestones.map(({ title, dueDate }) => ({ title, dueDate })),
       };
       const metadataHash = hashDealMetadata(metadata);
+      const notificationContacts: ClearDealNotificationContacts = {
+        ...(input.clientEmail ? { clientEmail: input.clientEmail } : {}),
+        ...(input.teamEmail ? { teamEmail: input.teamEmail } : {}),
+      };
+      const notificationHash = hashNotificationContacts(notificationContacts);
       const authorization: StoreDealMetadataAuthorization = {
         ownerAddress: ready.address,
         metadataHash,
+        notificationHash,
         requestId: crypto.randomUUID(),
         issuedAt: Date.now(),
       };
@@ -433,7 +507,12 @@ export function ProjectDashboardClient() {
       const response = await fetch("/api/deals/metadata", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...authorization, metadata, signature }),
+        body: JSON.stringify({
+          ...authorization,
+          metadata,
+          notificationContacts,
+          signature,
+        }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -583,6 +662,67 @@ export function ProjectDashboardClient() {
     return { ready, evidenceHash };
   }
 
+  async function openProtectedDelivery(evidenceHash: Hex) {
+    const ready = await requireReady();
+    setBusy(true);
+    try {
+      const authorization: AccessClearDealEvidenceAuthorization = {
+        signerAddress: ready.address,
+        evidenceHash,
+        requestId: crypto.randomUUID(),
+        issuedAt: Date.now(),
+      };
+      setTransaction({
+        status: "pending",
+        message: "Sign to open this participant-only delivery. This does not move USDC.",
+      });
+      const signature = await signMessageAsync({
+        message: buildAccessClearDealEvidenceMessage(authorization),
+      });
+      const response = await fetch("/api/deals/evidence/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...authorization, signature }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        opened?: boolean;
+        access?: "review" | "paid";
+        expiresAt?: number;
+        error?: string;
+      };
+      if (
+        !response.ok ||
+        !body.opened ||
+        !body.access ||
+        !Number.isSafeInteger(body.expiresAt)
+      ) {
+        throw new Error(body.error ?? "The protected delivery could not be opened.");
+      }
+      setFileAccess({
+        evidenceHash,
+        access: body.access,
+        expiresAt: body.expiresAt as number,
+      });
+      setTransaction({
+        status: "confirmed",
+        message:
+          body.access === "paid"
+            ? "Clean delivery unlocked after payment."
+            : "Protected review preview opened for 10 minutes.",
+      });
+    } catch (cause) {
+      setTransaction({
+        status: "error",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "The protected delivery could not be opened.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitDecision() {
     if (!decisionTarget) return;
     const note = decisionNote.trim();
@@ -651,7 +791,29 @@ export function ProjectDashboardClient() {
     const ready = await requireReady();
     setBusy(true);
     try {
-      const { descriptors, payloads } = await prepareEvidenceAttachments(evidenceFiles);
+      if (evidenceCleanFiles.length && !evidenceReviewFiles.length) {
+        throw new Error("Add at least one review preview before locking a clean delivery.");
+      }
+      const [review, clean] = await Promise.all([
+        prepareEvidenceAttachments(evidenceReviewFiles, "review"),
+        prepareEvidenceAttachments(evidenceCleanFiles, "paid"),
+      ]);
+      if (
+        review.descriptors.length + clean.descriptors.length >
+        CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS
+      ) {
+        throw new Error(`Attach no more than ${CLEARDEAL_EVIDENCE_MAX_ATTACHMENTS} files in total.`);
+      }
+      if (
+        [...evidenceReviewFiles, ...evidenceCleanFiles].reduce(
+          (sum, file) => sum + file.size,
+          0,
+        ) > CLEARDEAL_EVIDENCE_MAX_TOTAL_ATTACHMENT_BYTES
+      ) {
+        throw new Error("All attachments must total less than 2.5 MB.");
+      }
+      const descriptors = [...review.descriptors, ...clean.descriptors];
+      const payloads = [...review.payloads, ...clean.payloads];
       const evidence: ClearDealEvidence = {
         version: 1,
         kind: "milestone_submission",
@@ -705,7 +867,8 @@ export function ProjectDashboardClient() {
       );
       setEvidenceTarget(undefined);
       setEvidenceReference("");
-      setEvidenceFiles([]);
+      setEvidenceReviewFiles([]);
+      setEvidenceCleanFiles([]);
     } catch (cause) {
       setTransaction({
         status: "error",
@@ -913,42 +1076,81 @@ export function ProjectDashboardClient() {
                 </span>
               </div>
 
+              {latestChangeRequest && activeMilestone.status === "Pending" ? (
+                <div className="mt-5 border border-amber-300 bg-amber-50 p-4">
+                  <p className="inline-flex items-center gap-2 text-[11px] font-semibold text-amber-900">
+                    <RotateCcw className="h-4 w-4" />
+                    Client requested revision {activeMilestone.revisionCount}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-[11px] leading-5 text-amber-900/80">
+                    {latestChangeRequest.evidence.reference}
+                  </p>
+                </div>
+              ) : null}
+
               {isDemo || activeEvidence ? (
                 <div className="py-5">
-                  <p className="text-[13px] font-semibold">Delivery from {selected.team}</p>
-                  <p className="mt-2 text-[12px] leading-6 text-[#766b5d]">
-                    {isDemo
-                      ? "Complete responsive website with CMS, content pages, and contact form."
-                      : activeEvidence?.evidence.reference}
-                  </p>
-                  <p className="mt-5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">Attached files</p>
-                  <div className="mt-2 divide-y divide-[#ded5c6] border border-[#ded5c6]">
-                    {(isDemo
-                      ? [
-                          { name: "website-preview.png", size: 742_000, contentType: "image/png" },
-                          { name: "deployment-guide.pdf", size: 315_000, contentType: "application/pdf" },
-                        ]
-                      : activeEvidence?.evidence.attachments ?? []
-                    ).map((file, index) => (
-                      <a
-                        key={`${file.name}-${index}`}
-                        href={
-                          isDemo
-                            ? undefined
-                            : `/api/deals/evidence/attachment?hash=${activeMilestone.deliverableHash}&index=${index}`
-                        }
-                        className="flex items-center gap-3 px-4 py-3 text-[11px] hover:bg-[#f7f4e9]"
-                      >
-                        <FileText className="h-4 w-4 text-[#766b5d]" />
-                        <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                        <span className="font-mono text-[9px] text-[#766b5d]">{Math.ceil(file.size / 1_000)} KB</span>
-                        <Download className="h-4 w-4 text-[#766b5d]" />
-                      </a>
-                    ))}
-                    {!isDemo && !activeEvidence?.evidence.attachments?.length ? (
-                      <p className="px-4 py-3 text-[11px] text-[#766b5d]">No file attached. Review the signed delivery note above.</p>
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                    <div>
+                      <p className="text-[13px] font-semibold">Delivery from {selected.team}</p>
+                      <p className="mt-2 text-[12px] leading-6 text-[#766b5d]">
+                        {isDemo
+                          ? "Complete responsive website with CMS, content pages, and contact form."
+                          : activeEvidence?.evidence.reference}
+                      </p>
+                    </div>
+                    {!isDemo && activeEvidence?.clientViewedAt ? (
+                      <span className="inline-flex w-fit items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] text-emerald-700">
+                        <Eye className="h-3.5 w-3.5" />
+                        Client opened preview
+                      </span>
+                    ) : !isDemo && role === "Team" ? (
+                      <span className="inline-flex w-fit items-center gap-2 border border-[#ded5c6] px-3 py-2 text-[10px] text-[#766b5d]">
+                        <Eye className="h-3.5 w-3.5" />
+                        Not viewed yet
+                      </span>
                     ) : null}
                   </div>
+
+                  <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                    <div>
+                      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">Protected delivery files</p>
+                      <p className="mt-1 text-[10px] leading-5 text-[#766b5d]">
+                        Review previews are participant-only. Clean files unlock only after this milestone is paid.
+                      </p>
+                    </div>
+                    {!isDemo && activeAttachments.length && !activeFileAccess ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void openProtectedDelivery(activeMilestone.deliverableHash)}
+                        className="inline-flex min-h-11 items-center justify-center gap-2 border border-[#a66c00] px-4 text-[11px] font-semibold text-[#8c5a00] hover:bg-[#fff5d9] disabled:opacity-45"
+                      >
+                        <LockKeyhole className="h-4 w-4" />
+                        Sign to open files
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {activeAttachments.length ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      {activeAttachments.map((file, index) => (
+                        <ProtectedFileCard
+                          key={`${file.sha256}-${index}`}
+                          file={file}
+                          index={index}
+                          evidenceHash={activeMilestone.deliverableHash}
+                          opened={isDemo || Boolean(activeFileAccess)}
+                          paidAccess={isDemo || activeFileAccess?.access === "paid"}
+                          demo={isDemo}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 border border-[#ded5c6] px-4 py-3 text-[11px] text-[#766b5d]">
+                      No file attached. Review the signed delivery note above.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="grid min-h-40 place-items-center py-6 text-center">
@@ -1007,7 +1209,8 @@ export function ProjectDashboardClient() {
                     onClick={() => {
                       setEvidenceTarget({ deal: selected, milestone: activeMilestone });
                       setEvidenceReference("");
-                      setEvidenceFiles([]);
+                      setEvidenceReviewFiles([]);
+                      setEvidenceCleanFiles([]);
                     }}
                     className="min-h-12 bg-[#d58b00] px-6 text-[13px] font-semibold text-white hover:bg-[#bd7b00] disabled:opacity-45"
                   >
@@ -1264,7 +1467,7 @@ export function ProjectDashboardClient() {
               <div>
                 <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#a66c00]">Team delivery</p>
                 <h2 className="mt-2 font-display text-3xl">{evidenceTarget.milestone.title}</h2>
-                <p className="mt-2 text-[11px] text-[#766b5d]">Add a clear note and up to three sample files.</p>
+                <p className="mt-2 text-[11px] text-[#766b5d]">Add a review preview and, when needed, the clean file that unlocks after payment.</p>
               </div>
               <button type="button" onClick={() => setEvidenceTarget(undefined)} className="grid h-10 w-10 place-items-center border border-[#ded5c6]" aria-label="Close">
                 <X className="h-4 w-4" />
@@ -1283,31 +1486,44 @@ export function ProjectDashboardClient() {
                   className="cd-input resize-y"
                 />
               </label>
-              <label className="grid cursor-pointer place-items-center border border-dashed border-[#cdbfaa] bg-[#f7f4e9] p-7 text-center">
-                <Paperclip className="h-5 w-5 text-[#a66c00]" />
-                <span className="mt-3 text-[12px] font-semibold">Attach PDF, PNG, JPEG, or text</span>
-                <span className="mt-1 text-[9px] text-[#766b5d]">Up to 3 files, 1 MB each, 2 MB total</span>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain"
-                  className="sr-only"
-                  onChange={(event) => setEvidenceFiles(Array.from(event.target.files ?? []))}
-                />
-              </label>
-              {evidenceFiles.length ? (
-                <div className="divide-y divide-[#ded5c6] border border-[#ded5c6]">
-                  {evidenceFiles.map((file) => (
-                    <div key={`${file.name}-${file.lastModified}`} className="flex items-center gap-3 px-4 py-3 text-[11px]">
-                      <FileText className="h-4 w-4 text-[#766b5d]" />
-                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                      <span className="font-mono text-[9px] text-[#766b5d]">{Math.ceil(file.size / 1_000)} KB</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid min-h-36 cursor-pointer place-items-center border border-dashed border-[#cdbfaa] bg-[#f7f4e9] p-5 text-center">
+                  <span>
+                    <Eye className="mx-auto h-5 w-5 text-[#a66c00]" />
+                    <span className="mt-3 block text-[12px] font-semibold">Review preview</span>
+                    <span className="mt-1 block text-[9px] leading-4 text-[#766b5d]">Images get a server watermark. Upload videos already watermarked and compressed.</span>
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.txt,.mp4,.webm,application/pdf,image/png,image/jpeg,text/plain,video/mp4,video/webm"
+                    className="sr-only"
+                    onChange={(event) => setEvidenceReviewFiles(Array.from(event.target.files ?? []))}
+                  />
+                </label>
+                <label className="grid min-h-36 cursor-pointer place-items-center border border-dashed border-emerald-300 bg-emerald-50 p-5 text-center">
+                  <span>
+                    <LockKeyhole className="mx-auto h-5 w-5 text-emerald-700" />
+                    <span className="mt-3 block text-[12px] font-semibold">Clean delivery</span>
+                    <span className="mt-1 block text-[9px] leading-4 text-emerald-800/70">Encrypted at rest. The client cannot download it before this milestone is paid.</span>
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.txt,.mp4,.webm,application/pdf,image/png,image/jpeg,text/plain,video/mp4,video/webm"
+                    className="sr-only"
+                    onChange={(event) => setEvidenceCleanFiles(Array.from(event.target.files ?? []))}
+                  />
+                </label>
+              </div>
+              {evidenceReviewFiles.length ? (
+                <EvidenceFileList label="Review preview" files={evidenceReviewFiles} />
+              ) : null}
+              {evidenceCleanFiles.length ? (
+                <EvidenceFileList label="Locked clean delivery" files={evidenceCleanFiles} />
               ) : null}
               <p className="border border-amber-200 bg-amber-50 p-3 text-[10px] leading-5 text-amber-900">
-                Arc Testnet is public. Upload sample work only—never personal or confidential files.
+                Maximum 3 files total, 1.5 MB each and 2.5 MB combined. ClearDeal stores encrypted files offchain; Arc stores only their signed fingerprint. This is access control, not DRM—a reviewer can still record their screen.
               </p>
             </div>
             <footer className="flex justify-end gap-3 border-t border-[#ded5c6] p-6">
@@ -1425,6 +1641,111 @@ export function ProjectDashboardClient() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function EvidenceFileList({ label, files }: { label: string; files: File[] }) {
+  return (
+    <div className="border border-[#ded5c6]">
+      <p className="border-b border-[#ded5c6] bg-[#f7f4e9] px-4 py-2 font-mono text-[8px] uppercase tracking-[0.12em] text-[#766b5d]">
+        {label}
+      </p>
+      <div className="divide-y divide-[#ded5c6]">
+        {files.map((file) => (
+          <div key={`${file.name}-${file.lastModified}`} className="flex items-center gap-3 px-4 py-3 text-[11px]">
+            <FileText className="h-4 w-4 text-[#766b5d]" />
+            <span className="min-w-0 flex-1 truncate">{file.name}</span>
+            <span className="font-mono text-[9px] text-[#766b5d]">{Math.ceil(file.size / 1_000)} KB</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProtectedFileCard({
+  file,
+  index,
+  evidenceHash,
+  opened,
+  paidAccess,
+  demo,
+}: {
+  file: ClearDealEvidenceAttachment;
+  index: number;
+  evidenceHash: Hex;
+  opened: boolean;
+  paidAccess: boolean;
+  demo: boolean;
+}) {
+  const paidFile = file.access === "paid";
+  const unlocked = demo ? !paidFile : opened && (!paidFile || paidAccess);
+  const url = unlocked && !demo
+    ? `/api/deals/evidence/attachment?hash=${evidenceHash}&index=${index}`
+    : undefined;
+  const inlineUrl = url ? `${url}&view=1` : undefined;
+  const image = file.contentType === "image/jpeg" || file.contentType === "image/png";
+  const video = file.contentType === "video/mp4" || file.contentType === "video/webm";
+
+  return (
+    <article className="overflow-hidden border border-[#ded5c6] bg-[#f7f4e9]">
+      {unlocked && image && inlineUrl ? (
+        <Image
+          src={inlineUrl}
+          alt={`Protected preview ${file.name}`}
+          width={900}
+          height={560}
+          unoptimized
+          className="h-44 w-full bg-[#ece6d9] object-contain"
+        />
+      ) : unlocked && video && inlineUrl ? (
+        <video
+          controls
+          preload="metadata"
+          className="h-44 w-full bg-black object-contain"
+          src={inlineUrl}
+        >
+          Your browser does not support this protected video preview.
+        </video>
+      ) : unlocked && demo && image ? (
+        <div className="grid h-44 place-items-center bg-[#2b2118] p-6 text-center text-white">
+          <div>
+            <Eye className="mx-auto h-6 w-6 text-[#f2b431]" />
+            <p className="mt-3 font-mono text-[9px] uppercase tracking-[0.14em]">ClearDeal review preview</p>
+            <p className="mt-2 text-[10px] text-white/60">Viewer watermark appears here</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid h-28 place-items-center bg-[#ece6d9] text-center">
+          <div>
+            <LockKeyhole className="mx-auto h-6 w-6 text-[#8c8070]" />
+            <p className="mt-2 text-[10px] font-semibold text-[#62584c]">
+              {paidFile ? "Locked until milestone payment" : "Sign to open participant preview"}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-3 p-4 text-[11px]">
+        <FileText className="h-4 w-4 shrink-0 text-[#766b5d]" />
+        <span className="min-w-0 flex-1">
+          <strong className="block truncate">{file.name}</strong>
+          <span className="mt-1 block font-mono text-[8px] uppercase tracking-[0.08em] text-[#766b5d]">
+            {paidFile ? "Clean file · after payment" : "Review preview"} · {Math.ceil(file.size / 1_000)} KB
+          </span>
+        </span>
+        {unlocked && url ? (
+          <a
+            href={url}
+            className="grid h-10 w-10 shrink-0 place-items-center border border-[#cdbfaa] bg-white text-[#8c5a00] hover:border-[#a66c00]"
+            aria-label={`Download ${file.name}`}
+          >
+            <Download className="h-4 w-4" />
+          </a>
+        ) : (
+          <LockKeyhole className="h-4 w-4 shrink-0 text-[#8c8070]" />
+        )}
+      </div>
+    </article>
   );
 }
 

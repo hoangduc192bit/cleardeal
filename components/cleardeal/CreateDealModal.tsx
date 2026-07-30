@@ -7,6 +7,8 @@ import { isAddress } from "viem";
 export interface CreateDealInput {
   client: string;
   team: string;
+  clientEmail?: string;
+  teamEmail?: string;
   title: string;
   seller: `0x${string}`;
   arbitrator: `0x${string}`;
@@ -33,6 +35,8 @@ function dateAfter(days: number) {
 export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onClose, onCreate }: Props) {
   const [client, setClient] = useState("");
   const [team, setTeam] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [teamEmail, setTeamEmail] = useState("");
   const [title, setTitle] = useState("");
   const [seller, setSeller] = useState("");
   const [arbitrator, setArbitrator] = useState("");
@@ -79,6 +83,8 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
       await onCreate({
         client: client.trim(),
         team: team.trim(),
+        ...(clientEmail.trim() ? { clientEmail: clientEmail.trim() } : {}),
+        ...(teamEmail.trim() ? { teamEmail: teamEmail.trim() } : {}),
         title: title.trim(),
         seller,
         arbitrator,
@@ -104,6 +110,8 @@ export function CreateDealModal({ open, ownerAddress, disabledReason, busy, onCl
         <div className="grid gap-5 p-6 sm:grid-cols-2">
           <Field label="Client name"><input required maxLength={80} value={client} onChange={(event) => setClient(event.target.value)} placeholder="Northstar Studio" className="cd-input" /></Field>
           <Field label="Vietnam team"><input required maxLength={80} value={team} onChange={(event) => setTeam(event.target.value)} placeholder="Saigon Digital" className="cd-input" /></Field>
+          <Field label="Client email (optional)"><input type="email" maxLength={254} value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} placeholder="client@company.com" className="cd-input" /></Field>
+          <Field label="Team email (optional)"><input type="email" maxLength={254} value={teamEmail} onChange={(event) => setTeamEmail(event.target.value)} placeholder="team@studio.vn" className="cd-input" /></Field>
           <Field label="Project title"><input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Vietnam website launch" className="cd-input" /></Field>
           <Field label="Team payment wallet"><input required value={seller} onChange={(event) => setSeller(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
           <Field label="Independent dispute helper"><input required value={arbitrator} onChange={(event) => setArbitrator(event.target.value)} placeholder="0x..." className="cd-input font-mono" /></Field>
