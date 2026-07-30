@@ -133,6 +133,19 @@ export default function HowItWorksPage() {
             title="Team protection"
             text="The budget is visible and silence cannot block payment forever."
           />
+          <article className="cd-depth-card p-7 md:col-span-2 md:flex md:items-center md:justify-between md:gap-10">
+            <div>
+              <p className="cd-kicker">Why Arc</p>
+              <h2 className="cd-heading mt-3 text-3xl">
+                One stable unit from budget to final receipt.
+              </h2>
+            </div>
+            <p className="cd-copy mt-4 max-w-xl md:mt-0">
+              On Arc, the project payment and network fee both use USDC. The
+              client does not need a second volatile coin just to approve or
+              release completed work.
+            </p>
+          </article>
         </section>
 
         <section className="cd-soft-panel mt-16 flex flex-col justify-between gap-6 p-7 md:flex-row md:items-center md:p-9">

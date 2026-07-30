@@ -334,8 +334,8 @@ try {
   const howItWorks = await evaluate(`({
     heading: document.querySelector('h1')?.textContent?.trim(),
     hasFiveSteps:
-      document.body.innerText.includes('Agree on the delivery steps') &&
-      document.body.innerText.includes('Approve and release payment'),
+      document.body.innerText.includes('Define every delivery') &&
+      document.body.innerText.includes('Release the right amount'),
     hasArcReason:
       document.body.innerText.includes('project payment and network fee both use USDC')
   })`);
