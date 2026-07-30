@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowRight,
   Check,
@@ -58,6 +59,11 @@ export function CrosschainFundingModal({
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<BridgeResult>();
   const [error, setError] = useState<string>();
+  const [portalReady, setPortalReady] = useState(false);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -167,41 +173,43 @@ export function CrosschainFundingModal({
     }
   }
 
-  if (!open) return null;
+  if (!open || !portalReady) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[110] grid place-items-center bg-black/65 p-4 backdrop-blur-sm"
+      className="cd-modal-overlay fixed inset-0 z-[110] grid place-items-center overflow-y-auto bg-black/65 p-3 backdrop-blur-sm sm:p-5"
       role="dialog"
       aria-modal="true"
       aria-label="Bring USDC to Arc"
     >
-      <section className="max-h-[92dvh] w-full max-w-[680px] overflow-y-auto border border-[#ded5c6] bg-[#fffcf0] shadow-2xl">
-        <header className="flex items-start justify-between border-b border-[#ded5c6] p-6">
-          <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#a66c00]">
-              Fund from another network
-            </p>
-            <h2 className="mt-2 font-serif text-3xl font-semibold">
-              Bring testnet USDC to Arc.
-            </h2>
-            <p className="mt-2 max-w-[520px] text-[11px] leading-5 text-[#766b5d]">
-              Move testnet USDC from Base Sepolia or Ethereum Sepolia. The
-              destination is your same wallet on Arc Testnet.
-            </p>
+      <section className="cd-modal-surface my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[680px] flex-col overflow-hidden border border-[#ded5c6] shadow-2xl sm:max-h-[calc(100dvh-2.5rem)]">
+        <header className="shrink-0 border-b border-[#ded5c6] p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#a66c00]">
+                Fund from another network
+              </p>
+              <h2 className="mt-2 font-display text-3xl font-semibold">
+                Bring testnet USDC to Arc.
+              </h2>
+              <p className="mt-2 max-w-[520px] text-[11px] leading-5 text-[#766b5d]">
+                Move testnet USDC from Base Sepolia or Ethereum Sepolia. The
+                destination is your same wallet on Arc Testnet.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={running}
+              className="grid h-10 w-10 place-items-center border border-[#ded5c6] disabled:opacity-40"
+              aria-label="Close crosschain funding"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={running}
-            className="grid h-10 w-10 place-items-center border border-[#ded5c6] disabled:opacity-40"
-            aria-label="Close crosschain funding"
-          >
-            <X className="h-4 w-4" />
-          </button>
         </header>
 
-        <div className="grid grid-cols-2 border-b border-[#ded5c6]">
+        <div className="grid shrink-0 grid-cols-2 border-b border-[#ded5c6]">
           <button
             type="button"
             onClick={() => setMode("bridge")}
@@ -223,7 +231,8 @@ export function CrosschainFundingModal({
         </div>
 
         {mode === "bridge" ? (
-          <div className="space-y-5 p-6">
+          <>
+            <div className="cd-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2">
                 <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#766b5d]">
@@ -389,7 +398,8 @@ export function CrosschainFundingModal({
               </button>
             ) : null}
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            </div>
+            <div className="flex shrink-0 flex-col gap-3 border-t border-[#ded5c6] bg-white/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:px-6">
               <button
                 type="button"
                 onClick={() => void bridge()}
@@ -401,7 +411,7 @@ export function CrosschainFundingModal({
                   passkeyWallet ||
                   result?.state === "error"
                 }
-                className="min-h-12 flex-1 bg-[#d58b00] px-5 text-[12px] font-semibold text-white hover:bg-[#bd7b00] disabled:cursor-not-allowed disabled:opacity-45"
+                className="cd-button-primary min-h-12 flex-1 px-5 text-[12px] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {running
                   ? "Bridging..."
@@ -411,17 +421,17 @@ export function CrosschainFundingModal({
                 type="button"
                 onClick={onClose}
                 disabled={running}
-                className="min-h-12 border border-[#766b5d] px-5 text-[12px] font-semibold disabled:opacity-45"
+                className="cd-button-secondary min-h-12 px-5 text-[12px] disabled:opacity-45"
               >
                 {result?.state === "success" ? "Done. Deposit from Arc" : "Cancel"}
               </button>
             </div>
-          </div>
+          </>
         ) : (
-          <div className="p-6">
+          <div className="cd-scrollbar min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
             <div className="border border-[#ded5c6] bg-white p-5">
               <Repeat2 className="h-7 w-7 text-[#a66c00]" />
-              <h3 className="mt-4 font-serif text-2xl font-semibold">
+              <h3 className="mt-4 font-display text-2xl font-semibold">
                 Testnet swap is limited.
               </h3>
               <p className="mt-3 text-[11px] leading-6 text-[#574c40]">
@@ -462,6 +472,7 @@ export function CrosschainFundingModal({
           </div>
         )}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -663,6 +663,30 @@ textarea.cd-input {
     0 18px 42px rgba(24, 50, 72, 0.22);
 }
 
+.cd-modal-overlay {
+  background: rgba(12, 20, 32, 0.7);
+}
+
+.cd-modal-surface {
+  border-color: var(--cd-line) !important;
+  border-radius: 20px;
+  background: #ffffff !important;
+  color: var(--cd-ink);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 34px 100px rgba(11, 25, 42, 0.34);
+}
+
+body:has([role="dialog"][aria-modal="true"]) {
+  overflow: hidden;
+}
+
+body:has([role="dialog"][aria-modal="true"]) .cd-dock {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(18px) scale(0.96);
+}
+
 .cd-dashboard-grid {
   gap: 14px;
   padding: 14px;
