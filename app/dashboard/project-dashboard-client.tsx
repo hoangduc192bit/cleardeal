@@ -1090,26 +1090,14 @@ export function ProjectDashboardClient() {
       <header className="cd-topbar sticky top-0 z-50">
         <div className="mx-auto flex h-[78px] max-w-[1580px] items-center justify-between px-4 sm:px-7">
           <ClearDealBrand />
-          <nav className="hidden h-full items-center gap-8 lg:flex" aria-label="Project navigation">
-            <Link href="/dashboard" className="cd-nav-link relative grid h-full place-items-center">
-              Projects
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#c88400]" />
-            </Link>
-            <Link href="/how-it-works" className="cd-nav-link">
-              How it works
-            </Link>
+          <div className="hidden items-center gap-3 md:flex">
             <button
               type="button"
               onClick={() => setDirectoryOpen(true)}
-              className="cd-nav-link"
+              className="cd-button-secondary min-h-11 px-4"
             >
               Wallet contacts
             </button>
-            <Link href="/docs" className="cd-nav-link">
-              Docs
-            </Link>
-          </nav>
-          <div className="hidden items-center gap-3 md:flex">
             <span className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.14em] text-emerald-700">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Arc Testnet
@@ -1127,11 +1115,17 @@ export function ProjectDashboardClient() {
         </div>
         {mobileOpen ? (
           <div className="grid gap-2 border-t border-[#ded5c6] bg-[#fffcf0] p-4 md:hidden">
-            <Link href="/dashboard" className="px-3 py-2 text-sm font-semibold">Projects</Link>
-            <Link href="/how-it-works" className="px-3 py-2 text-sm">How it works</Link>
-            <button type="button" onClick={() => setDirectoryOpen(true)} className="px-3 py-2 text-left text-sm">Wallet contacts</button>
-            <Link href="/docs" className="px-3 py-2 text-sm">Docs</Link>
-            <div className="mt-2 border-t border-[#ded5c6] pt-4"><WalletButton /></div>
+            <button
+              type="button"
+              onClick={() => {
+                setDirectoryOpen(true);
+                setMobileOpen(false);
+              }}
+              className="cd-button-secondary w-full"
+            >
+              Wallet contacts
+            </button>
+            <WalletButton />
           </div>
         ) : null}
       </header>
